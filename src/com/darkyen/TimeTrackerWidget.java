@@ -1,6 +1,11 @@
 package com.darkyen;
 
 import com.intellij.ide.ui.UISettings;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.event.DocumentAdapter;
+import com.intellij.openapi.editor.event.DocumentEvent;
+import com.intellij.openapi.editor.event.DocumentListener;
+import com.intellij.openapi.editor.event.EditorEventMulticaster;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
@@ -33,6 +38,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private ScheduledFuture<?> ticker;
 
+    private DocumentListener autoStartDocumentListener = null;
+
     TimeTrackerWidget() {
         addActionListener(e -> setRunning(!running));
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
@@ -42,6 +49,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     void setState(TimeTrackerState state) {
         this.state = state;
+        setupAutoStartDocumentListener(state.autoStart);
     }
 
     synchronized TimeTrackerState getState() {
@@ -63,6 +71,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private synchronized void setRunning(boolean running) {
         if (!this.running && running) {
+            this.idle = false;
             this.running = true;
             this.startedAtMs = System.currentTimeMillis();
 
@@ -111,8 +120,27 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         );
     }
 
+    private void setupAutoStartDocumentListener(boolean enabled) {
+        final EditorEventMulticaster editorEventMulticaster = EditorFactory.getInstance().getEventMulticaster();
+        if (autoStartDocumentListener != null) {
+            editorEventMulticaster.removeDocumentListener(autoStartDocumentListener);
+            autoStartDocumentListener = null;
+        }
+        if (enabled) {
+            editorEventMulticaster.addDocumentListener(autoStartDocumentListener = new DocumentAdapter() {
+                @Override
+                public void documentChanged(DocumentEvent e) {
+                    if (!running) {
+                        setRunning(true);
+                    }
+                }
+            });
+        }
+    }
+
     @Override
     public void dispose() {
+        setupAutoStartDocumentListener(false);
         Toolkit.getDefaultToolkit().removeAWTEventListener(this);
         setRunning(false);
     }
