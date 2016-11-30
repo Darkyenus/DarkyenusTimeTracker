@@ -8,7 +8,7 @@ Pauses the timer automatically when idle (after two minutes of inactivity).
 Time is saved in IDE's workspace files, does not clutter project's directory.
 
 ### Installing
-Download `.jar` directly from GitHub releases or from plguin repository (TBD, approval pending).
+Download from [plugin repository](https://plugins.jetbrains.com/plugin/9286) or from [releases](https://github.com/Darkyenus/DarkyenusTimeTracker/releases).
 
 ### Building from source
 There are no dependencies, this is a pure IntelliJ plugin. PR's are welcome!
