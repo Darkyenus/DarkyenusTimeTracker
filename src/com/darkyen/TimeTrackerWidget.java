@@ -2,11 +2,13 @@ package com.darkyen;
 
 import com.intellij.ide.ui.UISettings;
 import com.intellij.notification.*;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentAdapter;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
@@ -55,6 +57,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
         setOpaque(false);
         setFocusable(false);
+
+        setupAutoStartDocumentListener(state.autoStart);
     }
 
     void setState(TimeTrackerState state) {
@@ -97,8 +101,6 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 idle = true;
             }
             state.totalTimeSeconds -= frozenForSec;
-
-
 
             final Notification notification = NOTIFICATION_GROUP.createNotification(
                     "Hibernation or freeze detected",
@@ -184,7 +186,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             editorEventMulticaster.addDocumentListener(autoStartDocumentListener = new DocumentAdapter() {
                 @Override
                 public void documentChanged(DocumentEvent e) {
-                    if (!running) {
+                    if (running) return;
+                    final Editor selectedTextEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                    if (selectedTextEditor == null) return;
+                    if(e.getDocument().equals(selectedTextEditor.getDocument())) {
                         setRunning(true);
                     }
                 }
