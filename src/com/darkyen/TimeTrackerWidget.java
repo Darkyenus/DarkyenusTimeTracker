@@ -142,8 +142,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             }), tickDelay, tickDelay, tickDelayUnit);
         } else if(this.running && !running) {
             checkForTimeJump(false);
-            this.running = false;
             state.totalTimeSeconds += runningForSeconds();
+            this.running = false;
 
             if (ticker != null) {
                 ticker.cancel(false);
