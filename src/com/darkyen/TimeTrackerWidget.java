@@ -1,16 +1,19 @@
 package com.darkyen;
 
 import com.intellij.ide.ui.UISettings;
+import com.intellij.notification.*;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentAdapter;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.ui.JBColor;
 import com.intellij.util.concurrency.EdtExecutorService;
+import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
@@ -28,6 +31,10 @@ import java.util.concurrent.TimeUnit;
  */
 public final class TimeTrackerWidget extends JButton implements CustomStatusBarWidget, AWTEventListener {
 
+    private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
+
+    private final Project project;
+
     private TimeTrackerState state = new TimeTrackerState();
 
     private boolean running = false;
@@ -35,12 +42,15 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private boolean idle = false;
     private long lastActivityAtMs = System.currentTimeMillis();
+    private long lastTickAt;
 
     private ScheduledFuture<?> ticker;
+    private long tickTooLongMs;
 
     private DocumentListener autoStartDocumentListener = null;
 
-    TimeTrackerWidget() {
+    TimeTrackerWidget(Project project) {
+        this.project = project;
         addActionListener(e -> setRunning(!running));
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
         setOpaque(false);
@@ -48,16 +58,22 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     }
 
     void setState(TimeTrackerState state) {
+        repaint();
         this.state = state;
         setupAutoStartDocumentListener(state.autoStart);
     }
 
-    synchronized TimeTrackerState getState() {
+    private void foldRunningTime() {
         final long runningForSeconds = runningForSeconds();
         if (runningForSeconds > 0) {
             state.totalTimeSeconds += runningForSeconds;
             startedAtMs += runningForSeconds * 1000;
         }
+    }
+
+    synchronized TimeTrackerState getState() {
+        checkForTimeJump(false);
+        foldRunningTime();
         return state;
     }
 
@@ -69,8 +85,39 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         }
     }
 
+    private synchronized void checkForTimeJump(boolean stop) {
+        final long now = System.currentTimeMillis();
+        final long sinceLastTick = now - lastTickAt;
+        if (this.running && sinceLastTick > tickTooLongMs) {
+            lastTickAt = now;
+            final long frozenForSec = (sinceLastTick - (tickTooLongMs / 2)) / 1000;
+            foldRunningTime();
+            if (stop) {
+                setRunning(false);
+                idle = true;
+            }
+            state.totalTimeSeconds -= frozenForSec;
+
+
+
+            final Notification notification = NOTIFICATION_GROUP.createNotification(
+                    "Hibernation or freeze detected",
+                    "For " + formatDuration(sinceLastTick / 1000) + ".<br>This time is not counted. <a href=\"revert\">Count anyway</a>.",
+                    NotificationType.WARNING,
+                    (n, event) -> {
+                        if ("revert".equals(event.getDescription())) {
+                            n.expire();
+                            state.totalTimeSeconds += frozenForSec;
+                            repaint();
+                        }
+                    });
+            Notifications.Bus.notify(notification, project);
+        }
+    }
+
     private synchronized void setRunning(boolean running) {
         if (!this.running && running) {
+            repaint();
             this.idle = false;
             this.running = true;
             this.startedAtMs = System.currentTimeMillis();
@@ -78,24 +125,31 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             if (ticker != null) {
                 ticker.cancel(false);
             }
+            lastTickAt = System.currentTimeMillis();
+            final long tickDelay = 1;
+            final TimeUnit tickDelayUnit = TimeUnit.SECONDS;
+            tickTooLongMs = tickDelayUnit.toMillis(tickDelay) * 20;//20 sec is too long
             ticker = EdtExecutorService.getScheduledExecutorInstance().scheduleWithFixedDelay(() -> UIUtil.invokeLaterIfNeeded(() -> {
-                final long now = System.currentTimeMillis();
-                if (now - lastActivityAtMs > state.idleThresholdMs) {
+                checkForTimeJump(true);
+                lastTickAt = System.currentTimeMillis();
+                if (System.currentTimeMillis() - lastActivityAtMs > state.idleThresholdMs) {
                     if (this.running) {
                         setRunning(false);
                         idle = true;
                     }
                 }
                 repaint();
-            }), 1, 1, TimeUnit.SECONDS);
+            }), tickDelay, tickDelay, tickDelayUnit);
         } else if(this.running && !running) {
-            state.totalTimeSeconds += runningForSeconds();
+            checkForTimeJump(false);
             this.running = false;
+            state.totalTimeSeconds += runningForSeconds();
 
             if (ticker != null) {
                 ticker.cancel(false);
                 ticker = null;
             }
+            repaint();
         }
     }
 
@@ -153,6 +207,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     public void paintComponent(final Graphics g) {
         long result;
         synchronized (this) {
+            checkForTimeJump(true);
             result = state.totalTimeSeconds + runningForSeconds();
         }
         final String info = formatDuration(result);
@@ -183,9 +238,11 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         final StringBuilder sb = new StringBuilder();
 
         boolean found = false;
+        boolean secondsRelevant = true;
         final long days = duration.toDays();
         if(days != 0) {
             found = true;
+            secondsRelevant = false;
             sb.append(days).append(" day");
             if (days != 1) {
                 sb.append("s");
@@ -197,6 +254,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 sb.append(" ");
             }
             found = true;
+            secondsRelevant = false;
             sb.append(hours).append(" hour");
             if (hours != 1) {
                 sb.append("s");
@@ -213,15 +271,17 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 sb.append("s");
             }*/
         }
-        final long seconds = duration.getSeconds() % 60;
-        {
-            if(found) {
-                sb.append(" ");
-            }
-            sb.append(seconds).append(" sec");/*
+        if(secondsRelevant) {
+            final long seconds = duration.getSeconds() % 60;
+            {
+                if(found) {
+                    sb.append(" ");
+                }
+                sb.append(seconds).append(" sec");/*
             if (seconds != 1) {
                 sb.append("s");
             }*/
+            }
         }
         return sb.toString();
     }

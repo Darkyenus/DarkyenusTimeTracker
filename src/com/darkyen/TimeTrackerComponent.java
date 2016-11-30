@@ -41,7 +41,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     @Override
     public void projectOpened() {
         if (widget == null) {
-            widget = new TimeTrackerWidget();
+            widget = new TimeTrackerWidget(project);
             if (lastStateCache != null) {
                 widget.setState(lastStateCache);
                 lastStateCache = null;
