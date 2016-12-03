@@ -1,7 +1,9 @@
 package com.darkyen;
 
+import com.intellij.ide.FrameStateManager;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.notification.*;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentAdapter;
@@ -322,7 +324,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     @Override
     public void eventDispatched(AWTEvent event) {
         lastActivityAtMs = System.currentTimeMillis();
-        if (idle) {
+        if (idle && ApplicationManager.getApplication().isActive()) {
             idle = false;
             setRunning(true);
         }
