@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Identifier, do not change if modifying:
+#DarkyenusTimeTrackerHookScript00000
+
+# Script (can be modified, but may be overwritten if new plugin version is installed):
+
+DTT_TIME="$(dirname "$0")/../.dtt_time"
+
+if [ -e "$DTT_TIME" ]
+then
+	TIME_TOTAL_SEC=$(cat $DTT_TIME)
+	TIME_REMAINING_SEC="$TIME_TOTAL_SEC"
+	TIME_MESSAGE=""
+	if ((TIME_TOTAL_SEC > 3600))
+	then
+		TIME_MESSAGE="$TIME_MESSAGE $(($TIME_REMAINING_SEC / 3600)) hour"
+		if (($TIME_REMAINING_SEC / 3600 != 1))
+		then
+		    TIME_MESSAGE="${TIME_MESSAGE}s"
+		fi
+		TIME_REMAINING_SEC=$(($TIME_REMAINING_SEC % 3600))
+	fi
+
+	if ((TIME_TOTAL_SEC > 60))
+	then
+		TIME_MESSAGE="$TIME_MESSAGE $(($TIME_REMAINING_SEC / 60)) minute"
+		if (($TIME_REMAINING_SEC / 60 != 1))
+		then
+			TIME_MESSAGE="${TIME_MESSAGE}s"
+		fi
+        TIME_REMAINING_SEC=$(($TIME_REMAINING_SEC % 60))
+	fi
+
+	if ((TIME_TOTAL_SEC > 0))
+	then
+		TIME_MESSAGE="$TIME_MESSAGE $TIME_REMAINING_SEC second"
+		if (($TIME_REMAINING_SEC != 1))
+        then
+            TIME_MESSAGE="${TIME_MESSAGE}s"
+        fi
+
+        printf "\n\nTook$TIME_MESSAGE" >> $1
+        echo "0" > $DTT_TIME
+        echo "Commit took$TIME_MESSAGE"
+    else
+        echo "Commit took no time, not recording"
+	fi
+else
+	echo "No timing data found"
+fi

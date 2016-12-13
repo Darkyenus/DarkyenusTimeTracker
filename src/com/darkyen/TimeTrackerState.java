@@ -9,4 +9,5 @@ public final class TimeTrackerState {
 
     public boolean autoStart = true;
     public long idleThresholdMs = 2 * 60 * 1000;
+    public boolean gitIntegration = false;
 }

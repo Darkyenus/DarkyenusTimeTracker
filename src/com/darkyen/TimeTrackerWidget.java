@@ -1,17 +1,23 @@
 package com.darkyen;
 
-import com.intellij.ide.FrameStateManager;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.notification.*;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.DocumentAdapter;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
+import com.intellij.openapi.extensions.Extensions;
+import com.intellij.openapi.fileEditor.FileDocumentManagerAdapter;
+import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.popup.ComponentPopupBuilder;
+import com.intellij.openapi.ui.popup.JBPopup;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
@@ -26,6 +32,8 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.AWTEventListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +60,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     private long tickTooLongMs;
 
     private DocumentListener autoStartDocumentListener = null;
+    private FileDocumentManagerListener saveDocumentListener = null;
 
     TimeTrackerWidget(Project project) {
         this.project = project;
@@ -61,18 +70,69 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         setFocusable(false);
 
         setupAutoStartDocumentListener(state.autoStart);
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON3) {
+                    final JPanel root = new JPanel();
+                    root.setLayout(new GridLayout(0, 2));
+
+                    final JLabel idleThresholdLabel = new JLabel("Idle threshold (sec):");
+                    final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(state.idleThresholdMs / 1000, 10, Integer.MAX_VALUE, 10));
+                    root.add(idleThresholdLabel);
+                    root.add(idleThresholdSpinner);
+                    idleThresholdSpinner.addChangeListener(ce -> state.idleThresholdMs = ((Number)idleThresholdSpinner.getValue()).longValue() * 1000);
+
+                    final JLabel autoStartLabel = new JLabel("Auto start on typing:");
+                    final JCheckBox autoStartCheckBox = new JCheckBox();
+                    autoStartCheckBox.setSelected(state.autoStart);
+                    root.add(autoStartLabel);
+                    root.add(autoStartCheckBox);
+                    autoStartCheckBox.addActionListener(al -> {
+                        state.autoStart = autoStartCheckBox.isSelected();
+                        setupAutoStartDocumentListener(state.autoStart);
+                    });
+
+                    final JLabel gitIntegrationLabel = new JLabel("Inject work time into Git commits:");
+                    final JCheckBox gitIntegrationCheckBox = new JCheckBox();
+                    gitIntegrationCheckBox.setSelected(state.gitIntegration);
+                    root.add(gitIntegrationLabel);
+                    root.add(gitIntegrationCheckBox);
+                    gitIntegrationCheckBox.addActionListener(al -> {
+                        final boolean enable = gitIntegrationCheckBox.isSelected();
+                        if(setupGitIntegration(enable)) {
+                            state.gitIntegration = enable;
+                        } else {
+                            gitIntegrationCheckBox.setSelected(state.gitIntegration);
+                        }
+                    });
+
+
+                    final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(root, null);
+                    popupBuilder.setCancelOnClickOutside(true);
+                    popupBuilder.setFocusable(true);
+                    popupBuilder.setShowBorder(true);
+                    popupBuilder.setShowShadow(true);
+                    final JBPopup popup = popupBuilder.createPopup();
+                    popup.showCenteredInCurrentWindow(project);
+                }
+            }
+        });
     }
 
     void setState(TimeTrackerState state) {
         repaint();
         this.state = state;
         setupAutoStartDocumentListener(state.autoStart);
+        setupGitIntegration(state.gitIntegration);
     }
 
     private void foldRunningTime() {
         final long runningForSeconds = runningForSeconds();
         if (runningForSeconds > 0) {
             state.totalTimeSeconds += runningForSeconds;
+            addVersionTime(runningForSeconds);
             startedAtMs += runningForSeconds * 1000;
         }
     }
@@ -103,6 +163,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 idle = true;
             }
             state.totalTimeSeconds -= frozenForSec;
+            addVersionTime(-frozenForSec);
 
             final Notification notification = NOTIFICATION_GROUP.createNotification(
                     "Hibernation or freeze detected",
@@ -112,6 +173,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                         if ("revert".equals(event.getDescription())) {
                             n.expire();
                             state.totalTimeSeconds += frozenForSec;
+                            addVersionTime(frozenForSec);
                             repaint();
                         }
                     });
@@ -146,7 +208,9 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             }), tickDelay, tickDelay, tickDelayUnit);
         } else if(this.running && !running) {
             checkForTimeJump(false);
-            state.totalTimeSeconds += runningForSeconds();
+            final long runningForSeconds = runningForSeconds();
+            state.totalTimeSeconds += runningForSeconds;
+            addVersionTime(runningForSeconds);
             this.running = false;
 
             if (ticker != null) {
@@ -176,6 +240,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                         AWTEvent.MOUSE_EVENT_MASK |
                         AWTEvent.MOUSE_MOTION_EVENT_MASK
         );
+        saveDocumentListener = new FileDocumentManagerAdapter() {
+            @Override
+            public void beforeAllDocumentsSaving() {
+                foldRunningTime();
+            }
+
+            @Override
+            public void beforeDocumentSaving(@NotNull Document document) {
+                foldRunningTime();
+            }
+        };
+        Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME).registerExtension(saveDocumentListener);
     }
 
     private void setupAutoStartDocumentListener(boolean enabled) {
@@ -199,9 +275,30 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         }
     }
 
+    private boolean setupGitIntegration(boolean enabled) {
+        try {
+            GitIntegration.setupCommitHook(project, enabled);
+            return true;
+        } catch (GitIntegration.CommitHookException ex) {
+            final Notification notification = NOTIFICATION_GROUP.createNotification(
+                    "Failed to "+(enabled ? "enable" : "disable")+" git integration",
+                    ex.getMessage(),
+                    NotificationType.WARNING, null);
+            Notifications.Bus.notify(notification, project);
+            return false;
+        }
+    }
+
+    private void addVersionTime(long seconds) {
+        if (state.gitIntegration) {
+            GitIntegration.updateVersionTimeFile(project, seconds);
+        }
+    }
+
     @Override
     public void dispose() {
         setupAutoStartDocumentListener(false);
+        Extensions.getArea(project).getExtensionPoint(FileDocumentManagerListener.EP_NAME).unregisterExtension(saveDocumentListener);
         Toolkit.getDefaultToolkit().removeAWTEventListener(this);
         setRunning(false);
     }
