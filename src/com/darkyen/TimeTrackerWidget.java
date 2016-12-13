@@ -298,7 +298,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     @Override
     public void dispose() {
         setupAutoStartDocumentListener(false);
-        Extensions.getArea(project).getExtensionPoint(FileDocumentManagerListener.EP_NAME).unregisterExtension(saveDocumentListener);
+        Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME).unregisterExtension(saveDocumentListener);
         Toolkit.getDefaultToolkit().removeAWTEventListener(this);
         setRunning(false);
     }
