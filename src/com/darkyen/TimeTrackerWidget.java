@@ -440,10 +440,12 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     @Override
     public void eventDispatched(AWTEvent event) {
-        lastActivityAtMs = System.currentTimeMillis();
-        if (idle && ApplicationManager.getApplication().isActive()) {
-            idle = false;
-            setRunning(true);
+        if (ApplicationManager.getApplication().isActive()) {
+            lastActivityAtMs = System.currentTimeMillis();
+            if (idle) {
+                idle = false;
+                setRunning(true);
+            }
         }
     }
 }
