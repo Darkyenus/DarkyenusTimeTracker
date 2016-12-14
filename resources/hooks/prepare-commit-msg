@@ -5,6 +5,11 @@
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
+if [ "$2" = "merge" ]
+then
+	exit 0
+fi
+
 DTT_TIME="$(dirname "$0")/../.darkyenus_time_tracker_commit_time"
 
 if [ -e "$DTT_TIME" ]
