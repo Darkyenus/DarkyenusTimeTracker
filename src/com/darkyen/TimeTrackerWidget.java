@@ -126,6 +126,26 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         this.state = state;
         setupAutoStartDocumentListener(state.autoStart);
         setupGitIntegration(state.gitIntegration);
+
+        if ((state.naggedAbout & TimeTrackerState.NAGGED_ABOUT_GIT_INTEGRATION) == 0
+                && !state.gitIntegration && project.getBaseDir().findChild(".git") != null) {
+            Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                    "Git repository detected",
+                    "Enable time tracker git integration?<br><a href=\"yes\">Yes</a> <a href=\"no\">No</a><br>You can change your mind it later. Git integration will append time spent on commit into commit messages.",
+                    NotificationType.INFORMATION,
+                    (n, event) -> {
+                        if ("yes".equals(event.getDescription())) {
+                            if (!state.gitIntegration && setupGitIntegration(true)) {
+                                state.gitIntegration = true;
+                            }
+                        } else if (!"no".equals(event.getDescription())) {
+                            return;
+                        }
+                        n.expire();
+                        state.naggedAbout |= TimeTrackerState.NAGGED_ABOUT_GIT_INTEGRATION;
+
+                    }), project);
+        }
     }
 
     private void foldRunningTime() {
@@ -359,7 +379,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             }
             found = true;
             secondsRelevant = false;
-            sb.append(hours).append(" hour");
+            sb.append(hours).append(" hr");
             if (hours != 1) {
                 sb.append("s");
             }

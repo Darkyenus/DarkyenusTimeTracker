@@ -10,4 +10,9 @@ public final class TimeTrackerState {
     public boolean autoStart = true;
     public long idleThresholdMs = 2 * 60 * 1000;
     public boolean gitIntegration = false;
+
+    /** Bit field recording which features did we suggest user to enable. */
+    public long naggedAbout = 0;
+
+    public static transient long NAGGED_ABOUT_GIT_INTEGRATION = 1;
 }
