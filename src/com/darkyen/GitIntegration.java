@@ -20,7 +20,7 @@ final class GitIntegration {
 
     private static final Logger LOG = Logger.getLogger("com.darkyen.GitIntegration");
 
-    private static final String DTT_TIME_FILE_NAME = ".dtt_time";
+    private static final String DTT_TIME_FILE_NAME = ".darkyenus_time_tracker_commit_time";
 
     private GitIntegration() {}
 
@@ -61,7 +61,7 @@ final class GitIntegration {
 
     private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
     private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00000";
+    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00001";
 
     private static VirtualFile getHookDirectory(Project project) {
         final VirtualFile git = project.getBaseDir().findChild(".git");
