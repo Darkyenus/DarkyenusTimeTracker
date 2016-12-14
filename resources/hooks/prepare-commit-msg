@@ -32,12 +32,15 @@ then
         TIME_REMAINING_SEC=$(($TIME_REMAINING_SEC % 60))
 	fi
 
-	if (($TIME_TOTAL_SEC > 0 && $TIME_TOTAL_SEC < 60))
+	if (($TIME_TOTAL_SEC > 0))
 	then
-		TIME_MESSAGE="$TIME_MESSAGE $TIME_REMAINING_SEC second"
-		if (($TIME_REMAINING_SEC != 1))
-        then
-            TIME_MESSAGE="${TIME_MESSAGE}s"
+		if (($TIME_TOTAL_SEC < 60))
+		then
+			TIME_MESSAGE="$TIME_MESSAGE $TIME_REMAINING_SEC second"
+			if (($TIME_REMAINING_SEC != 1))
+	        then
+	            TIME_MESSAGE="${TIME_MESSAGE}s"
+	        fi
         fi
 
         printf "\n\nTook$TIME_MESSAGE" >> $1
