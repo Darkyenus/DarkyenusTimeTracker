@@ -19,10 +19,10 @@ import com.intellij.openapi.ui.popup.ComponentPopupBuilder;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
-import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.concurrency.EdtExecutorService;
 import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.JBUI;
@@ -83,6 +83,9 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     final JPanel root = new JPanel();
                     root.setLayout(new GridLayout(0, 2));
+                    final int insetLR = 10;
+                    final int insetTB = 5;
+                    root.setBorder(BorderFactory.createEmptyBorder(insetTB, insetLR, insetTB, insetLR));
 
                     final JLabel idleThresholdLabel = new JLabel("Idle threshold (sec):");
                     final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(state.idleThresholdMs / 1000, 10, Integer.MAX_VALUE, 10));
@@ -114,6 +117,12 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                         }
                     });
 
+                    final JLabel autoPauseLabel = new JLabel("Pause others when this activates:");
+                    final JCheckBox autoPauseCheckBox = new JCheckBox();
+                    autoPauseCheckBox.setSelected(state.pauseOtherTrackerInstances);
+                    root.add(autoPauseLabel);
+                    root.add(autoPauseCheckBox);
+                    autoPauseCheckBox.addActionListener(al -> state.pauseOtherTrackerInstances = autoPauseCheckBox.isSelected());
 
                     final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(root, null);
                     popupBuilder.setCancelOnClickOutside(true);
@@ -121,7 +130,11 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     popupBuilder.setShowBorder(true);
                     popupBuilder.setShowShadow(true);
                     final JBPopup popup = popupBuilder.createPopup();
-                    popup.showCenteredInCurrentWindow(project);
+
+                    final Rectangle visibleRect = TimeTrackerWidget.this.getVisibleRect();
+                    final Dimension preferredSize = root.getPreferredSize();
+                    final RelativePoint point = new RelativePoint(TimeTrackerWidget.this, new Point(visibleRect.x+visibleRect.width - preferredSize.width, visibleRect.y - (preferredSize.height + 15)));
+                    popup.show(point);
                 }
             }
         });
