@@ -19,6 +19,7 @@ import com.intellij.openapi.ui.popup.ComponentPopupBuilder;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
+import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.ui.JBColor;
@@ -35,6 +36,8 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -61,6 +64,9 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private DocumentListener autoStartDocumentListener = null;
     private FileDocumentManagerListener saveDocumentListener = null;
+
+    private static final Object ALL_OPENED_TRACKERS_LOCK = new Object();
+    private static final java.util.List<TimeTrackerWidget> ALL_OPENED_TRACKERS = Collections.synchronizedList(new ArrayList<>());
 
     TimeTrackerWidget(Project project) {
         this.project = project;
@@ -203,6 +209,16 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private synchronized void setRunning(boolean running) {
         if (!this.running && running) {
+            if (state.pauseOtherTrackerInstances) {
+                synchronized (ALL_OPENED_TRACKERS_LOCK) {
+                    for (TimeTrackerWidget tracker : ALL_OPENED_TRACKERS) {
+                        if (tracker != this && tracker.running) {
+                            tracker.setRunning(false);
+                            tracker.idle = true;
+                        }
+                    }
+                }
+            }
             repaint();
             this.idle = false;
             this.running = true;
@@ -272,6 +288,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             }
         };
         Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME).registerExtension(saveDocumentListener);
+
+        synchronized (ALL_OPENED_TRACKERS_LOCK) {
+            ALL_OPENED_TRACKERS.add(this);
+        }
     }
 
     private void setupAutoStartDocumentListener(boolean enabled) {
@@ -321,6 +341,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME).unregisterExtension(saveDocumentListener);
         Toolkit.getDefaultToolkit().removeAWTEventListener(this);
         setRunning(false);
+
+        synchronized (ALL_OPENED_TRACKERS_LOCK) {
+            ALL_OPENED_TRACKERS.remove(this);
+        }
     }
 
     private static final Color COLOR_OFF = new JBColor(new Color(189, 0, 16), new Color(128, 0, 0));
@@ -440,12 +464,21 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     @Override
     public void eventDispatched(AWTEvent event) {
-        if (ApplicationManager.getApplication().isActive()) {
+        final Component ultimateParent = UIUtil.findUltimateParent(this);
+        final Window activeWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        // Un-idle this only if our ide window is active
+        if (ApplicationManager.getApplication().isActive() && ultimateParent == activeWindow) {
             lastActivityAtMs = System.currentTimeMillis();
             if (idle) {
                 idle = false;
                 setRunning(true);
             }
         }
+    }
+
+    /** Identity equals, used in {@link TimeTrackerWidget#ALL_OPENED_TRACKERS}*/
+    @Override
+    public boolean equals(Object obj) {
+        return this == obj;
     }
 }
