@@ -1,15 +1,10 @@
 package com.darkyen;
 
 import com.intellij.openapi.components.*;
-import com.intellij.openapi.options.Configurable;
-import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.WindowManager;
-import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
 
 /**
  *
@@ -18,7 +13,7 @@ import javax.swing.*;
         name="DarkyenusTimeTracker",
         storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE, roamingType = RoamingType.DEFAULT)}
         )
-public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerState>, Configurable {
+public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerState> {
 
     private final Project project;
     private TimeTrackerWidget widget;
@@ -82,40 +77,5 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         } else {
             lastStateCache = state;
         }
-    }
-
-    // Configurable
-
-    @Nls
-    @Override
-    public String getDisplayName() {
-        return "Darkyenus Time Tracker";
-    }
-
-    @Nullable
-    @Override
-    public String getHelpTopic() {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public JComponent createComponent() {
-        return null;
-    }
-
-    @Override
-    public boolean isModified() {
-        return false;
-    }
-
-    @Override
-    public void apply() throws ConfigurationException {
-
-    }
-
-    @Override
-    public void reset() {
-
     }
 }
