@@ -82,7 +82,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     final JPanel root = new JPanel();
-                    root.setLayout(new GridLayout(0, 2));
+                    root.setLayout(new GridLayout(0, 2, 4, 0));
                     final int insetLR = 10;
                     final int insetTB = 5;
                     root.setBorder(BorderFactory.createEmptyBorder(insetTB, insetLR, insetTB, insetLR));
@@ -95,6 +95,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
                     final JLabel autoStartLabel = new JLabel("Auto start on typing:");
                     final JCheckBox autoStartCheckBox = new JCheckBox();
+                    autoStartCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
+                    autoStartCheckBox.setVerticalAlignment(SwingConstants.CENTER);
                     autoStartCheckBox.setSelected(state.autoStart);
                     root.add(autoStartLabel);
                     root.add(autoStartCheckBox);
@@ -106,6 +108,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     final JLabel gitIntegrationLabel = new JLabel("Inject work time into Git commits:");
                     final JCheckBox gitIntegrationCheckBox = new JCheckBox();
                     gitIntegrationCheckBox.setSelected(state.gitIntegration);
+                    gitIntegrationCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
+                    gitIntegrationCheckBox.setVerticalAlignment(SwingConstants.CENTER);
                     root.add(gitIntegrationLabel);
                     root.add(gitIntegrationCheckBox);
                     gitIntegrationCheckBox.addActionListener(al -> {
@@ -120,6 +124,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     final JLabel autoPauseLabel = new JLabel("Pause others when this activates:");
                     final JCheckBox autoPauseCheckBox = new JCheckBox();
                     autoPauseCheckBox.setSelected(state.pauseOtherTrackerInstances);
+                    autoPauseCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
+                    autoPauseCheckBox.setVerticalAlignment(SwingConstants.CENTER);
                     root.add(autoPauseLabel);
                     root.add(autoPauseCheckBox);
                     autoPauseCheckBox.addActionListener(al -> state.pauseOtherTrackerInstances = autoPauseCheckBox.isSelected());
