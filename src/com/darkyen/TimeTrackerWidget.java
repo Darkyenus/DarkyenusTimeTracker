@@ -130,6 +130,45 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     root.add(autoPauseCheckBox);
                     autoPauseCheckBox.addActionListener(al -> state.pauseOtherTrackerInstances = autoPauseCheckBox.isSelected());
 
+                    final JButton timeResetButton = new JButton("Reset time");
+                    timeResetButton.setToolTipText("Completely reset tracked time, including git time, if enabled");
+                    timeResetButton.addActionListener(e1 -> {
+                        final boolean previouslyRunning = TimeTrackerWidget.this.running;
+                        setRunning(false);
+                        if (state.gitIntegration) {
+                            GitIntegration.updateVersionTimeFile(project, GitIntegration.RESET_TIME_TO_ZERO);
+                        }
+                        state.totalTimeSeconds = 0;
+                        repaint();
+                        setRunning(previouslyRunning);
+                    });
+                    root.add(timeResetButton);
+
+                    {// +time buttons
+                        final long[] timesSec = {-3600, -60*5, -30, 30, 60*5, 3600};
+                        final String[] labels = {"-1h", "-5m", "-30s", "+30s", "+5m", "+1h"};
+
+                        final JPanel timeButtonsPanel = new JPanel();
+                        timeButtonsPanel.setBorder(BorderFactory.createEmptyBorder());
+                        timeButtonsPanel.setLayout(new BoxLayout(timeButtonsPanel, BoxLayout.LINE_AXIS));
+                        for (int i = 0; i < labels.length; i++) {
+                            final long timeChange = timesSec[i];
+                            final JButton timeButton = new JButton(labels[i]);
+                            timeButton.addActionListener(e1 -> {
+                                final boolean previouslyRunning = TimeTrackerWidget.this.running;
+                                setRunning(false);
+                                if (state.gitIntegration) {
+                                    GitIntegration.updateVersionTimeFile(project, timeChange);
+                                }
+                                state.totalTimeSeconds = Math.max(0, state.totalTimeSeconds + timeChange);
+                                repaint();
+                                setRunning(previouslyRunning);
+                            });
+                            timeButtonsPanel.add(timeButton);
+                        }
+                        root.add(timeButtonsPanel);
+                    }
+
                     final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(root, null);
                     popupBuilder.setCancelOnClickOutside(true);
                     popupBuilder.setFocusable(true);
