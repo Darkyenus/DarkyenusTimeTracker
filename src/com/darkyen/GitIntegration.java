@@ -1,6 +1,8 @@
 package com.darkyen;
 
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -22,12 +24,15 @@ final class GitIntegration {
 
     private static final String DTT_TIME_FILE_NAME = ".darkyenus_time_tracker_commit_time";
 
+    static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
+
     private GitIntegration() {}
 
-    static boolean updateVersionTimeFile(Project project, long versionSeconds) {
-        final VirtualFile child = project.getBaseDir().findChild(".git");
-        if (child == null) return false;
-        return ApplicationManager.getApplication().<Boolean>runWriteAction(() -> {
+    static void updateVersionTimeFile(Project project, long versionSeconds) {
+        final Application application = ApplicationManager.getApplication();
+        application.invokeLater(() -> application.runWriteAction(() -> {
+            final VirtualFile child = project.getBaseDir().findChild(".git");
+            if (child == null) return;
             try {
                 final VirtualFile timeFile = child.findOrCreateChildData(GitIntegration.class, DTT_TIME_FILE_NAME);
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(timeFile.getInputStream(), StandardCharsets.UTF_8));
@@ -40,15 +45,13 @@ final class GitIntegration {
                     }
                 } catch (NumberFormatException ignored) {}
 
-                long newSeconds = Math.max(0, existingSeconds + versionSeconds);
+                final long newSeconds = versionSeconds == RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
                 timeFile.setBinaryContent(Long.toString(newSeconds).getBytes(StandardCharsets.UTF_8));
-                return true;
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Error while updating version time file", e);
-                return false;
             }
-        });
+        }), ModalityState.defaultModalityState());
     }
 
     private static byte[] _prepare_commit_message_hook_content = null;
