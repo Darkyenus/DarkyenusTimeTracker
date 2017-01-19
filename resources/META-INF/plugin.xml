@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>com.darkyen.darkyenustimetracker</id>
   <name>Darkyenus Time Tracker</name>
-  <version>1.3</version>
+  <version>1.3.1</version>
   <vendor email="darkyen@me.com" url="http://darkyenus.github.io">Darkyen</vendor>
   <category>Miscellaneous</category>
 
