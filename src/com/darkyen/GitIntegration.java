@@ -30,7 +30,7 @@ final class GitIntegration {
 
     static void updateVersionTimeFile(Project project, long versionSeconds) {
         final Application application = ApplicationManager.getApplication();
-        application.invokeLater(() -> application.runWriteAction(() -> {
+        application.invokeAndWait(() -> application.runWriteAction(() -> {
             final VirtualFile child = project.getBaseDir().findChild(".git");
             if (child == null) return;
             try {
