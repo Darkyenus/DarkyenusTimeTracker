@@ -64,7 +64,7 @@ final class GitIntegration {
 
     private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
     private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00001";
+    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00002";
 
     private static VirtualFile getHookDirectory(Project project) {
         final VirtualFile git = project.getBaseDir().findChild(".git");
