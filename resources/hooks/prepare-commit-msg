@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00001
+#DarkyenusTimeTrackerHookScript00002
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
@@ -48,8 +48,8 @@ then
 	        fi
         fi
 
-        printf "\n\nTook$TIME_MESSAGE" >> $1
-        echo "0" > ${DTT_TIME}
+        printf "\n\nTook$TIME_MESSAGE" >> "$1"
+        echo "0" > "$DTT_TIME"
         echo "Commit took$TIME_MESSAGE"
     else
         echo "Commit took no time, not recording"
