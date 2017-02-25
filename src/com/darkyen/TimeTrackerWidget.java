@@ -121,6 +121,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                         }
                     });
 
+                    final JLabel onlyHoursLabel = new JLabel("Show only hours in widget:");
+                    final JCheckBox onlyHoursCheckBox = new JCheckBox();
+                    onlyHoursCheckBox.setSelected(state.showOnlyHours);
+                    onlyHoursCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
+                    onlyHoursCheckBox.setVerticalAlignment(SwingConstants.CENTER);
+                    root.add(onlyHoursLabel);
+                    root.add(onlyHoursCheckBox);
+                    onlyHoursCheckBox.addActionListener(al -> {
+                        state.showOnlyHours = onlyHoursCheckBox.isSelected();
+                        repaint();
+                    });
+
                     final JLabel autoPauseLabel = new JLabel("Pause others when this activates:");
                     final JCheckBox autoPauseCheckBox = new JCheckBox();
                     autoPauseCheckBox.setSelected(state.pauseOtherTrackerInstances);
@@ -251,7 +263,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
             final Notification notification = NOTIFICATION_GROUP.createNotification(
                     "Hibernation or freeze detected",
-                    "For " + formatDuration(sinceLastTick / 1000) + ".<br>This time is not counted. <a href=\"revert\">Count anyway</a>.",
+                    "For " + formatDuration(sinceLastTick / 1000, state.showOnlyHours) + ".<br>This time is not counted. <a href=\"revert\">Count anyway</a>.",
                     NotificationType.WARNING,
                     (n, event) -> {
                         if ("revert".equals(event.getDescription())) {
@@ -416,7 +428,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             checkForTimeJump(true);
             result = state.totalTimeSeconds + runningForSeconds();
         }
-        final String info = formatDuration(result);
+        final String info = formatDuration(result, state.showOnlyHours);
 
         final Dimension size = getSize();
         final Insets insets = getInsets();
@@ -439,56 +451,66 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         g.drawString(info, xOffset + (totalBarLength - infoWidth) / 2, yOffset + infoHeight + (barHeight - infoHeight) / 2 - 1);
     }
 
-    private static String formatDuration(long secondDuration) {
+    private static String formatDuration(long secondDuration, boolean showOnlyHours) {
         final Duration duration = Duration.ofSeconds(secondDuration);
         final StringBuilder sb = new StringBuilder();
 
-        boolean found = false;
-        boolean secondsRelevant = true;
-        final long days = duration.toDays();
-        if(days != 0) {
-            found = true;
-            secondsRelevant = false;
-            sb.append(days).append(" day");
-            if (days != 1) {
-                sb.append("s");
+        if (!showOnlyHours) {
+            boolean found = false;
+            boolean secondsRelevant = true;
+            final long days = duration.toDays();
+            if(days != 0) {
+                found = true;
+                secondsRelevant = false;
+                sb.append(days).append(" day");
+                if (days != 1) {
+                    sb.append("s");
+                }
             }
-        }
-        final long hours = duration.toHours() % 24;
-        if(found || hours != 0) {
-            if(found) {
-                sb.append(" ");
-            }
-            found = true;
-            secondsRelevant = false;
-            sb.append(hours).append(" hr");
-            if (hours != 1) {
-                sb.append("s");
-            }
-        }
-        final long minutes = duration.toMinutes() % 60;
-        if(found || minutes != 0) {
-            if(found) {
-                sb.append(" ");
-            }
-            found = true;
-            sb.append(minutes).append(" min");/*
-            if (minutes != 1) {
-                sb.append("s");
-            }*/
-        }
-        if(secondsRelevant) {
-            final long seconds = duration.getSeconds() % 60;
-            {
+            final long hours = duration.toHours() % 24;
+            if(found || hours != 0) {
                 if(found) {
                     sb.append(" ");
                 }
-                sb.append(seconds).append(" sec");/*
-            if (seconds != 1) {
+                found = true;
+                secondsRelevant = false;
+                sb.append(hours).append(" hr");
+                if (hours != 1) {
+                    sb.append("s");
+                }
+            }
+            final long minutes = duration.toMinutes() % 60;
+            if(found || minutes != 0) {
+                if(found) {
+                    sb.append(" ");
+                }
+                found = true;
+                sb.append(minutes).append(" min");/*
+            if (minutes != 1) {
                 sb.append("s");
             }*/
             }
+            if(secondsRelevant) {
+                final long seconds = duration.getSeconds() % 60;
+                {
+                    if(found) {
+                        sb.append(" ");
+                    }
+                    sb.append(seconds).append(" sec");/*
+            if (seconds != 1) {
+                sb.append("s");
+            }*/
+                }
+            }
+        } else {
+            final long hours = duration.toHours();
+            final float rest = (secondDuration - hours * 60 * 60) / 60f;
+            sb.append(hours).append(".").append((int)(rest * 10)).append(" hr");
+            if (hours != 1 && (int)(rest * 10) != 0) {
+                sb.append("s");
+            }
         }
+
         return sb.toString();
     }
 
@@ -501,7 +523,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return JBUI.Fonts.label(11);
     }
 
-    private static final String SAMPLE_STRING = formatDuration(999999999999L);
+    private static final String SAMPLE_STRING = formatDuration(999999999999L, false);
     @Override
     public Dimension getPreferredSize() {
         final Insets insets = getInsets();
