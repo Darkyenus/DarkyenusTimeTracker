@@ -445,20 +445,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
         boolean found = false;
         boolean secondsRelevant = true;
-        final long days = duration.toDays();
-        if(days != 0) {
-            found = true;
-            secondsRelevant = false;
-            sb.append(days).append(" day");
-            if (days != 1) {
-                sb.append("s");
-            }
-        }
-        final long hours = duration.toHours() % 24;
-        if(found || hours != 0) {
-            if(found) {
-                sb.append(" ");
-            }
+        final long hours = duration.toHours();
+        if(hours != 0) {
             found = true;
             secondsRelevant = false;
             sb.append(hours).append(" hr");
