@@ -195,7 +195,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 && !state.gitIntegration && project.getBaseDir().findChild(".git") != null) {
             Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
                     "Git repository detected",
-                    "Enable time tracker git integration?<br><a href=\"yes\">Yes</a> <a href=\"no\">No</a><br>You can change your mind it later. Git integration will append time spent on commit into commit messages.",
+                    "Enable time tracker git integration?<br><a href=\"yes\">Yes</a> <a href=\"no\">No</a><br>You can change your mind later. Git integration will append time spent on commit into commit messages.",
                     NotificationType.INFORMATION,
                     (n, event) -> {
                         if ("yes".equals(event.getDescription())) {
