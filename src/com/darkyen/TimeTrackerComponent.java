@@ -15,7 +15,7 @@ import java.util.logging.Logger;
  */
 @State(
         name="DarkyenusTimeTracker",
-        storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE, roamingType = RoamingType.DEFAULT)}
+        storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE)}
         )
 public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerState> {
 

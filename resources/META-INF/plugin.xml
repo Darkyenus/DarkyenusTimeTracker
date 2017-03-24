@@ -1,7 +1,7 @@
-<idea-plugin version="2">
+<idea-plugin>
   <id>com.darkyen.darkyenustimetracker</id>
   <name>Darkyenus Time Tracker</name>
-  <version>1.3.1</version>
+  <version>1.3.2</version>
   <vendor email="darkyen@me.com" url="http://darkyenus.github.io">Darkyen</vendor>
   <category>Miscellaneous</category>
 
@@ -17,6 +17,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <h3>Version 1.3.2</h3>
+      <ul>
+      <li>Update for latest IntelliJ</li>
+      <li>Don't show days, only hours</li>
+      </ul>
       <h3>Version 1.3.1</h3>
       <ul>
       <li>Fix exception when closing project window</li>
