@@ -2,9 +2,13 @@ package com.darkyen;
 
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -14,6 +18,8 @@ import org.jetbrains.annotations.Nullable;
         storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE, roamingType = RoamingType.DEFAULT)}
         )
 public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerState> {
+
+    private static final Logger LOG = Logger.getLogger(TimeTrackerComponent.class.getName());
 
     private final Project project;
     private TimeTrackerWidget widget;
@@ -38,6 +44,12 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         return "TimeTrackerComponent";
     }
 
+    private StatusBar getProjectStatusBar() {
+        final WindowManager windowManager = WindowManager.getInstance();
+        if (windowManager == null) return null;
+        return windowManager.getStatusBar(project);
+    }
+
     @Override
     public void projectOpened() {
         if (widget == null) {
@@ -46,14 +58,24 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 widget.setState(lastStateCache);
                 lastStateCache = null;
             }
-            WindowManager.getInstance().getStatusBar(project).addWidget(widget);
+            final StatusBar statusBar = getProjectStatusBar();
+            if (statusBar != null) {
+                statusBar.addWidget(widget);
+            } else {
+                LOG.log(Level.SEVERE, "Can't initialize time tracking widget, status bar returned by IDE is null");
+            }
         }
     }
 
     @Override
     public void projectClosed() {
         if (widget != null) {
-            WindowManager.getInstance().getStatusBar(project).removeWidget(widget.ID());
+            final StatusBar statusBar = getProjectStatusBar();
+            if (statusBar != null) {
+                statusBar.removeWidget(widget.ID());
+            } else {
+                LOG.log(Level.WARNING, "Can't remove time tracking widget, status bar returned by IDE is null");
+            }
             lastStateCache = widget.getState();
         }
     }
