@@ -26,12 +26,16 @@ final class GitIntegration {
 
     static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
-    private GitIntegration() {}
+    private final VirtualFile baseDir;
 
-    static void updateVersionTimeFile(Project project, long versionSeconds) {
+    public GitIntegration(Project project) {
+        this.baseDir = project.getBaseDir();
+    }
+
+    void updateVersionTimeFile(long versionSeconds) {
         final Application application = ApplicationManager.getApplication();
         application.invokeAndWait(() -> application.runWriteAction(() -> {
-            final VirtualFile child = project.getBaseDir().findChild(".git");
+            final VirtualFile child = baseDir.findChild(".git");
             if (child == null) return;
             try {
                 final VirtualFile timeFile = child.findOrCreateChildData(GitIntegration.class, DTT_TIME_FILE_NAME);
@@ -66,8 +70,8 @@ final class GitIntegration {
     private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
     private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00002";
 
-    private static VirtualFile getHookDirectory(Project project) {
-        final VirtualFile git = project.getBaseDir().findChild(".git");
+    private VirtualFile getHookDirectory() {
+        final VirtualFile git = baseDir.findChild(".git");
         if (git == null || !git.isDirectory()) return null;
         final VirtualFile hooks = git.findChild("hooks");
         if (hooks == null || !hooks.isDirectory()) return null;
@@ -87,9 +91,9 @@ final class GitIntegration {
         }
     }
 
-    static void setupCommitHook(Project project, boolean enable) throws CommitHookException {
+    void setupCommitHook(boolean enable) throws CommitHookException {
         ApplicationManager.getApplication().runWriteAction(() -> {
-            final VirtualFile hookDirectory = getHookDirectory(project);
+            final VirtualFile hookDirectory = getHookDirectory();
             if (hookDirectory == null) {
                 if (enable) {
                     throw new CommitHookException("Git not initialized");

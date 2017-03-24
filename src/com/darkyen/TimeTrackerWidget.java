@@ -49,6 +49,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
 
     private final Project project;
+    private final GitIntegration gitIntegration;
 
     private TimeTrackerState state = new TimeTrackerState();
 
@@ -70,6 +71,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     TimeTrackerWidget(Project project) {
         this.project = project;
+        this.gitIntegration = new GitIntegration(project);
         addActionListener(e -> setRunning(!running));
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
         setOpaque(false);
@@ -136,7 +138,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                         final boolean previouslyRunning = TimeTrackerWidget.this.running;
                         setRunning(false);
                         if (state.gitIntegration) {
-                            GitIntegration.updateVersionTimeFile(project, GitIntegration.RESET_TIME_TO_ZERO);
+                            gitIntegration.updateVersionTimeFile(GitIntegration.RESET_TIME_TO_ZERO);
                         }
                         state.totalTimeSeconds = 0;
                         repaint();
@@ -158,7 +160,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                                 final boolean previouslyRunning = TimeTrackerWidget.this.running;
                                 setRunning(false);
                                 if (state.gitIntegration) {
-                                    GitIntegration.updateVersionTimeFile(project, timeChange);
+                                    gitIntegration.updateVersionTimeFile(timeChange);
                                 }
                                 state.totalTimeSeconds = Math.max(0, state.totalTimeSeconds + timeChange);
                                 repaint();
@@ -375,7 +377,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private boolean setupGitIntegration(boolean enabled) {
         try {
-            GitIntegration.setupCommitHook(project, enabled);
+            gitIntegration.setupCommitHook(enabled);
             return true;
         } catch (GitIntegration.CommitHookException ex) {
             final Notification notification = NOTIFICATION_GROUP.createNotification(
@@ -389,7 +391,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     private void addVersionTime(long seconds) {
         if (state.gitIntegration) {
-            GitIntegration.updateVersionTimeFile(project, seconds);
+            gitIntegration.updateVersionTimeFile(seconds);
         }
     }
 
