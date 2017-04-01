@@ -1,12 +1,30 @@
 #!/bin/bash
 
 # Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00002
+#DarkyenusTimeTrackerHookScript00003
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
-if [ "$2" = "merge" ]
+if [ "$2" = "merge" ] || [ "$2" = "squash" ]
 then
+	exit 0
+fi
+
+# Do not append time if the commit message is empty, because such commit will not happen
+COMMIT_MESSAGE_LINES=$(cat "$1" | sed -e '/^#.*$/ d' -e '/^[[:space:]]*$/ d' | wc -l)
+if (($COMMIT_MESSAGE_LINES == 0))
+then
+	exit 0
+fi
+
+# Do not append time to amend commits - those already may have the time appended.
+# The only way to detect amend commit is the check whether or not the first line of commit message is empty.
+# That however does not work for "message" type commits (commit -m), but that is not a big deal,
+# as those won't have the time appended anyway, so they are not problematic.
+FIRST_COMMIT_LINE=$(head -n 1 "$1")
+if [ "$2" == "commit" ] && [ -n "$FIRST_COMMIT_LINE" ]
+then
+	echo "Not injecting time into amend commit"
 	exit 0
 fi
 

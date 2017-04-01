@@ -28,7 +28,7 @@ final class GitIntegration {
 
     private final VirtualFile baseDir;
 
-    public GitIntegration(Project project) {
+    GitIntegration(Project project) {
         this.baseDir = project.getBaseDir();
     }
 
@@ -68,7 +68,7 @@ final class GitIntegration {
 
     private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
     private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00002";
+    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00003";
 
     private VirtualFile getHookDirectory() {
         final VirtualFile git = baseDir.findChild(".git");
