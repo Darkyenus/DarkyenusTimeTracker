@@ -7,13 +7,15 @@
 
 if [ "$2" = "merge" ] || [ "$2" = "squash" ]
 then
+	echo "Not injecting time into $2 commit"
 	exit 0
 fi
 
 # Do not append time if the commit message is empty, because such commit will not happen
 COMMIT_MESSAGE_LINES=$(cat "$1" | sed -e '/^#.*$/ d' -e '/^[[:space:]]*$/ d' | wc -l)
-if (($COMMIT_MESSAGE_LINES == 0))
+if [ "$2" = "message" ] && (($COMMIT_MESSAGE_LINES == 0))
 then
+	echo "Not injecting time into cancelled commit"
 	exit 0
 fi
 
