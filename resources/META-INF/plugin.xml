@@ -1,8 +1,8 @@
 <idea-plugin>
   <id>com.darkyen.darkyenustimetracker</id>
   <name>Darkyenus Time Tracker</name>
-  <version>1.3.3</version>
-  <vendor email="darkyen@me.com" url="http://darkyenus.github.io">Darkyen</vendor>
+  <version>1.3.4</version>
+  <vendor email="darkyenus@gmail.com" url="http://darkyenus.github.io">Darkyen</vendor>
   <category>Miscellaneous</category>
 
   <description><![CDATA[
@@ -17,6 +17,10 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <h3>Version 1.3.4</h3>
+      <ul>
+      <li>Fix thread problem that caused crashes on IntelliJ 2017.3.3</li>
+      </ul>
       <h3>Version 1.3.3</h3>
       <ul>
       <li>Improve git hook</li>
