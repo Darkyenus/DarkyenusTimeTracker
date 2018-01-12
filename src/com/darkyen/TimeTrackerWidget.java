@@ -6,7 +6,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
-import com.intellij.openapi.editor.event.DocumentAdapter;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
@@ -361,15 +360,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             autoStartDocumentListener = null;
         }
         if (enabled) {
-            editorEventMulticaster.addDocumentListener(autoStartDocumentListener = new DocumentAdapter() {
+            editorEventMulticaster.addDocumentListener(autoStartDocumentListener = new DocumentListener() {
                 @Override
                 public void documentChanged(DocumentEvent e) {
                     if (running) return;
-                    final Editor selectedTextEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
-                    if (selectedTextEditor == null) return;
-                    if(e.getDocument().equals(selectedTextEditor.getDocument())) {
-                        setRunning(true);
-                    }
+                    //getSelectedTextEditor() must be run from event dispatch thread
+                    EventQueue.invokeLater(() -> {
+                        final Editor selectedTextEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                        if (selectedTextEditor == null) return;
+                        if(e.getDocument().equals(selectedTextEditor.getDocument())) {
+                            setRunning(true);
+                        }
+                    });
                 }
             });
         }
