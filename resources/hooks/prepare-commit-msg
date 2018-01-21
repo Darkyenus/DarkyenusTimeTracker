@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00003
+#DarkyenusTimeTrackerHookScript00004
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
@@ -70,6 +70,25 @@ then
 
         printf "\n\nTook$TIME_MESSAGE" >> "$1"
         echo "0" > "$DTT_TIME"
+
+        while true; do
+            DTT_TIME_CONTENT=$(cat "$DTT_TIME")
+            if [ ${DTT_TIME_CONTENT} == "0" ]; then
+                break
+            fi
+
+			# Warn and wait 1 second, then try again
+            echo "Time did not reset, trying again..."
+            sleep 1
+
+            echo "0" > "$DTT_TIME"
+            ECHO_EXIT=$?
+
+            if [ ${ECHO_EXIT} != "0" ]; then
+				echo "Reset attempt exited with $ECHO_EXIT!"
+            fi
+        done
+
         echo "Commit took$TIME_MESSAGE"
     else
         echo "Commit took no time, not recording"

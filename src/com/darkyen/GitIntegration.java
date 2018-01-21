@@ -7,10 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,23 +32,36 @@ final class GitIntegration {
     void updateVersionTimeFile(long versionSeconds) {
         final Application application = ApplicationManager.getApplication();
         application.invokeAndWait(() -> application.runWriteAction(() -> {
-            final VirtualFile child = baseDir.findChild(".git");
-            if (child == null) return;
             try {
-                final VirtualFile timeFile = child.findOrCreateChildData(GitIntegration.class, DTT_TIME_FILE_NAME);
-                final BufferedReader reader = new BufferedReader(new InputStreamReader(timeFile.getInputStream(), StandardCharsets.UTF_8));
-                final String line = reader.readLine();
-                reader.close();
+                final VirtualFile child = baseDir.findChild(".git");
+                if (child == null) return;
+
+                final VirtualFile timeFile = child.findOrCreateChildData(GitIntegration.this, DTT_TIME_FILE_NAME);
+                timeFile.refresh(false, false);
+                timeFile.setPreloadedContentHint(null);// Just to make sure
+                timeFile.setBOM(null);
+
+                final String line;
+                try (final BufferedReader reader = new BufferedReader(new InputStreamReader(timeFile.getInputStream(), StandardCharsets.UTF_8))) {
+                    line = reader.readLine();
+                }
+
                 long existingSeconds = 0;
                 try {
                     if (line != null) {
                         existingSeconds = Long.parseLong(line);
                     }
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                    LOG.log(Level.WARNING, "Time file did not contain only numbers: \""+line+"\"");
+                }
 
                 final long newSeconds = versionSeconds == RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
-                timeFile.setBinaryContent(Long.toString(newSeconds).getBytes(StandardCharsets.UTF_8));
+                final byte[] newSecondsBytes = Long.toString(newSeconds).getBytes(StandardCharsets.UTF_8);
+                try (final OutputStream out = timeFile.getOutputStream(GitIntegration.this)) {
+                    out.write(newSecondsBytes);
+                }
+
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Error while updating version time file", e);
             }
@@ -68,7 +78,7 @@ final class GitIntegration {
 
     private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
     private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00003";
+    private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER+"00004";
 
     private VirtualFile getHookDirectory() {
         final VirtualFile git = baseDir.findChild(".git");
