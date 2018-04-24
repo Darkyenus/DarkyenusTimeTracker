@@ -366,6 +366,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     if (running) return;
                     //getSelectedTextEditor() must be run from event dispatch thread
                     EventQueue.invokeLater(() -> {
+                        if (project.isDisposed()) return;
                         final Editor selectedTextEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
                         if (selectedTextEditor == null) return;
                         if(e.getDocument().equals(selectedTextEditor.getDocument())) {
