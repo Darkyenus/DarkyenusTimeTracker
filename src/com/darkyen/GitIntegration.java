@@ -6,6 +6,7 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 
@@ -44,7 +45,7 @@ final class GitIntegration implements Disposable {
 
 			final VirtualFile timeFile;
 			try {
-				timeFile = child.findOrCreateChildData(GitIntegration.this, DTT_TIME_FILE_NAME);
+				timeFile = application.runWriteAction((ThrowableComputable<VirtualFile, IOException>) () -> child.findOrCreateChildData(GitIntegration.this, DTT_TIME_FILE_NAME));
 			} catch (IOException e) {
 				LOG.log(Level.WARNING, "Failed to create git time VirtualFile", e);
 				return;
