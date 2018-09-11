@@ -4,6 +4,7 @@ package com.darkyen;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.ThrowableComputable;
@@ -87,7 +88,7 @@ final class GitIntegration implements Disposable {
 					LOG.log(Level.WARNING, "Error while writing git time file", e);
 				}
 			});
-		});
+		}, ModalityState.NON_MODAL);
 	}
 
 	private static byte[] _prepare_commit_message_hook_content = null;
