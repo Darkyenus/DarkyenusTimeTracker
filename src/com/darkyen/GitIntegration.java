@@ -1,7 +1,6 @@
 
 package com.darkyen;
 
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
@@ -19,20 +18,13 @@ import java.util.logging.Logger;
 /**
  *
  */
-final class GitIntegration implements Disposable {
+final class GitIntegration {
 
 	private static final Logger LOG = Logger.getLogger("com.darkyen.GitIntegration");
 
 	private static final String DTT_TIME_FILE_NAME = ".darkyenus_time_tracker_commit_time";
 
-	static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
-
 	private final VirtualFile baseDir;
-
-	@Override
-	public void dispose () {
-		// Can't be disposed
-	}
 
 	GitIntegration (Project project) {
 		this.baseDir = project.getBaseDir();
@@ -78,7 +70,7 @@ final class GitIntegration implements Disposable {
 			});
 
 			final long existingSeconds = maybeExistingSeconds == null ? 0 : maybeExistingSeconds;
-			final long newSeconds = versionSeconds == RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
+			final long newSeconds = versionSeconds == TimeTrackerComponent.RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
 			application.runWriteAction( () -> {
 				final byte[] newSecondsBytes = Long.toString(newSeconds).getBytes(StandardCharsets.UTF_8);
@@ -127,11 +119,11 @@ final class GitIntegration implements Disposable {
 	}
 
 	void setupCommitHook (boolean enable) throws CommitHookException {
-		ApplicationManager.getApplication().runWriteAction( () -> {
+		ApplicationManager.getApplication().runWriteAction(() -> {
 			final VirtualFile hookDirectory = getHookDirectory();
 			if (hookDirectory == null) {
 				if (enable) {
-					throw new CommitHookException("Git not initialized");
+					throw new CommitHookException("'.git/' not found in the project root directory");
 				}
 				return;
 			}
@@ -140,46 +132,47 @@ final class GitIntegration implements Disposable {
 				if (hook == null) {
 					if (enable) {
 						// Create new hook
-			final VirtualFile newHook = hookDirectory.createChildData(GitIntegration.class, PREPARE_COMMIT_MESSAGE_HOOK_NAME);
-			fillWithHookContent(newHook);
-		} else {
-			// All good, no hook is present
-			// noinspection UnnecessaryReturnStatement
-			return;
-		}
-	} else {
-		// Is it our hook?
-		final String content = new String(hook.contentsToByteArray(), StandardCharsets.UTF_8);
-		final boolean isTimeTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER);
-		final boolean isRecentTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED);
-		if (enable) {
-			if (isRecentTrackerHook) {
-				// All good, recent hook is present
-				// noinspection UnnecessaryReturnStatement
-				return;
-			} else if (isTimeTrackerHook) {
-				// There is our hook, but old, replace
-				fillWithHookContent(hook);
-			} else {
-				// This is not our hook!
-				throw new CommitHookException("There already is a " + PREPARE_COMMIT_MESSAGE_HOOK_NAME + " hook! Can't initialize.");
+						final VirtualFile newHook = hookDirectory
+								.createChildData(GitIntegration.class, PREPARE_COMMIT_MESSAGE_HOOK_NAME);
+						fillWithHookContent(newHook);
+					} else {
+						// All good, no hook is present
+						// noinspection UnnecessaryReturnStatement
+						return;
+					}
+				} else {
+					// Is it our hook?
+					final String content = new String(hook.contentsToByteArray(), StandardCharsets.UTF_8);
+					final boolean isTimeTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER);
+					final boolean isRecentTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED);
+					if (enable) {
+						if (isRecentTrackerHook) {
+							// All good, recent hook is present
+							// noinspection UnnecessaryReturnStatement
+							return;
+						} else if (isTimeTrackerHook) {
+							// There is our hook, but old, replace
+							fillWithHookContent(hook);
+						} else {
+							// This is not our hook!
+							throw new CommitHookException("There already is a " + PREPARE_COMMIT_MESSAGE_HOOK_NAME + " hook! Can't initialize.");
+						}
+					} else {
+						if (isTimeTrackerHook) {
+							// We are disabling and this is our hook, delete
+							hook.delete(GitIntegration.class);
+						} else {
+							// We are disabling and this is not our hook, leave it alone
+							// noinspection UnnecessaryReturnStatement
+							return;
+						}
+					}
+				}
+			} catch (IOException ex) {
+				LOG.log(Level.WARNING, "Failed to setupCommitHook", ex);
+				throw new CommitHookException("Internal error, failed to " + (enable ? "enable" : "disable"));
 			}
-		} else {
-			if (isTimeTrackerHook) {
-				// We are disabling and this is our hook, delete
-				hook.delete(GitIntegration.class);
-			} else {
-				// We are disabling and this is not our hook, leave it alone
-				// noinspection UnnecessaryReturnStatement
-				return;
-			}
-		}
-	}
-} catch (IOException ex) {
-	LOG.log(Level.WARNING, "Failed to setupCommitHook", ex);
-	throw new CommitHookException("Internal error, failed to " + (enable ? "enable" : "disable"));
-}
-}		);
+		});
 	}
 
 	static final class CommitHookException extends RuntimeException {
