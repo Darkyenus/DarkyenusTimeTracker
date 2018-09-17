@@ -108,7 +108,12 @@ final class TimeTrackerPopupContent extends Box {
 			gitIntegrationCheckBox.setVerticalAlignment(SwingConstants.CENTER);
 			optionsPanel.add(gitIntegrationCheckBox);
 			gitIntegrationCheckBox.addActionListener(al -> {
-				gitIntegrationCheckBox.setSelected(component.setGitIntegration(gitIntegrationCheckBox.isSelected()));
+				final Boolean result = component.setGitIntegration(gitIntegrationCheckBox.isSelected());
+				if (result == null) {
+					popup.cancel();
+				} else {
+					gitIntegrationCheckBox.setSelected(result);
+				}
 			});
 		}
 

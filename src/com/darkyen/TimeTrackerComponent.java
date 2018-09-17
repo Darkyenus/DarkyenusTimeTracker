@@ -13,6 +13,9 @@ import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
 import com.intellij.openapi.extensions.Extensions;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.fileChooser.FileChooserDialog;
+import com.intellij.openapi.fileChooser.FileChooserFactory;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -75,6 +78,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private boolean pauseOtherTrackerInstances;
 
     private boolean gitIntegration;
+    private String gitHooksPath;
 
     private long naggedAbout = 0;
 
@@ -337,36 +341,35 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         return gitIntegration;
     }
 
-    public synchronized boolean setGitIntegration(boolean enable) {
+    public synchronized Boolean setGitIntegration(boolean enable) {
+        final Path projectBase = convertToIOFile(getProjectBaseDir(project));
+        if (projectBase == null) {
+            if (enable) {
+                Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                        "Failed to enable git integration",
+                        "Project is not on a local filesystem",
+                        NotificationType.WARNING, null), project);
+            }
+            return false;
+        }
+
         GitIntegration gitIntegrationComponent = this.gitIntegrationComponent;
         if (gitIntegrationComponent == null) {
             // Create it
-            final Path projectBase = convertToIOFile(getProjectBaseDir(project));
-            if (projectBase == null) {
-                if (enable) {
-                    Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
-                            "Failed to enable git integration",
-                            "Project is not on a local filesystem",
-                            NotificationType.WARNING, null), project);
-                }
-                return false;
-            }
             final Path gitDir = projectBase.resolve(".git");
-            final Path gitHooksDir = gitDir.resolve("hooks");
+            final Path gitHooksDir = projectBase.resolve(gitHooksPath);
             gitIntegrationComponent = this.gitIntegrationComponent = new GitIntegration(gitDir, gitHooksDir);
         }
 
-        final GitIntegration.SetupCommitHookResult result = gitIntegrationComponent
-                .setupCommitHook(enable);
+        final GitIntegration.SetupCommitHookResult result = gitIntegrationComponent.setupCommitHook(enable);
         switch (result) {
             case SUCCESS: {
-                this.gitIntegration = enable;
                 if (enable) {
                     updateGitTime(0);
                 } else {
                     nagAboutGitIntegrationIfNeeded();
                 }
-                return enable;
+                return this.gitIntegration = enable;
             }
             case INTERNAL_ERROR:
             case HOOK_ALREADY_EXISTS:
@@ -378,13 +381,57 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 return this.gitIntegration = false;
             }
             case GIT_HOOKS_DIR_NOT_FOUND: {
-                //TODO
+                final Notification notification = NOTIFICATION_GROUP.createNotification(
+                        "Failed to enable git integration",
+                        "'.git/hooks' directory not found",
+                        NotificationType.WARNING, null);
+                notification.addAction(new AnAction("Find manually") {
+                    @Override
+                    public void actionPerformed(@NotNull AnActionEvent e) {
+                        if (notification.isExpired()) {
+                            return;
+                        }
+                        notification.expire();
 
-                return false;
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            @SuppressWarnings("DialogTitleCapitalization")
+                            final FileChooserDialog fileChooser = FileChooserFactory
+                                    .getInstance().createFileChooser(
+                                            new FileChooserDescriptor(false, true, false, false, false, false)
+                                                    .withShowHiddenFiles(true)
+                                                    .withRoots(getProjectBaseDir(project))
+                                                    .withHideIgnored(false)
+                                                    .withTitle("Select .git/hooks Directory"), project, null);
+
+                            final VirtualFile[] chosen = fileChooser.choose(project);
+                            Path hooks = null;
+                            if (chosen.length >= 1) {
+                                hooks = convertToIOFile(chosen[0]);
+                            }
+                            if (hooks == null) {
+                                return;
+                            }
+
+                            synchronized (TimeTrackerComponent.this) {
+                                TimeTrackerComponent.this.gitIntegrationComponent = null;
+                                if (hooks.startsWith(projectBase)) {
+                                    TimeTrackerComponent.this.gitHooksPath = projectBase.relativize(hooks).toString();
+                                } else {
+                                    TimeTrackerComponent.this.gitHooksPath = hooks.toAbsolutePath().toString();
+                                }
+                                setGitIntegration(true);
+                            }
+                        }, ModalityState.NON_MODAL);
+                    }
+                });
+                Notifications.Bus.notify(notification, project);
+
+                this.gitIntegration = false;
+                return null;
             }
             default: {
                 LOG.log(Level.SEVERE, "Invalid setupCommitHook result: " + result);
-                return false;
+                return this.gitIntegration = false;
             }
         }
     }
@@ -493,6 +540,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
                 gitIntegration = false;//Otherwise setGitTimePattern triggers update
                 setGitTimePattern(TimePattern.parse(state.gitTimePattern));
+                this.gitHooksPath = state.gitHooksPath;
                 setGitIntegration(state.gitIntegration);
             }
             repaintWidget(true);
@@ -571,6 +619,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         result.autoCountIdleSeconds = autoCountIdleSeconds;
         result.stopWhenIdleRatherThanPausing = stopWhenIdleRatherThanPausing;
         result.gitIntegration = gitIntegration;
+        result.gitHooksPath = gitHooksPath;
         result.pauseOtherTrackerInstances = pauseOtherTrackerInstances;
 
         result.naggedAbout = naggedAbout;
