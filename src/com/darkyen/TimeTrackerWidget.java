@@ -93,10 +93,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     private static final Color COLOR_ON = new JBColor(new Color(28, 152, 19), new Color(56, 113, 41));
     private static final Color COLOR_IDLE = new JBColor(new Color(200, 164, 23), new Color(163, 112, 17));
 
+    public static final TimePattern FULL_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{s \"second\"s}}");
+    private int lastTimeToShow = -1;
+
     @Override
     public void paintComponent(final Graphics g) {
         final int timeToShow = component.getTotalTimeSeconds();
         final String info = component.getIdeTimePattern().secondsToString(timeToShow);
+
+        if (timeToShow != lastTimeToShow) {
+            lastTimeToShow = timeToShow;
+            setToolTipText(FULL_TIME_FORMATTING.secondsToString(timeToShow)+"\nRight click to open settings.");
+        }
 
         final Dimension size = getSize();
         final Insets insets = getInsets();
