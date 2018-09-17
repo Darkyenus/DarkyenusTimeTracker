@@ -137,7 +137,7 @@ final class TimeTrackerPopupContent extends Box {
 
 			{// +time buttons
 				final int[] timesSec = {-3600, -60 * 5, -30, 30, 60 * 5, 3600};
-				final String[] labels = {"-1h", "-5m", "-30s", "+30s", "+5m", "+1h"};
+				final String[] labels = {"−1h", "−5m", "−30s", "+30s", "+5m", "+1h"};
 
 				for (int i = 0; i < labels.length; i++) {
 					final int timeChange = timesSec[i];

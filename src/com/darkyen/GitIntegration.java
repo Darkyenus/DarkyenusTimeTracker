@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.darkyen.TimeTrackerComponent.getProjectBaseDir;
+
 /**
  *
  */
@@ -28,7 +30,7 @@ final class GitIntegration {
 	private final VirtualFile baseDir;
 
 	GitIntegration (Project project) {
-		this.baseDir = project.getBaseDir();
+		this.baseDir = getProjectBaseDir(project);
 	}
 
 	/*

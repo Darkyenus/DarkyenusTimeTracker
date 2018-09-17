@@ -16,6 +16,7 @@ import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
@@ -24,6 +25,7 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.SystemIndependent;
 
 import java.awt.*;
 import java.util.Set;
@@ -378,7 +380,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private void nagAboutGitIntegrationIfNeeded() {
         if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && !gitIntegration) {
             ApplicationManager.getApplication().invokeLater(() -> {
-                if (!gitIntegration && project.getBaseDir().findChild(".git") != null) {
+                final VirtualFile projectBaseDir = getProjectBaseDir(project);
+                if (!gitIntegration && projectBaseDir != null && projectBaseDir.findChild(".git") != null) {
                     Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
                             "Git repository detected",
                             "Enable time tracker git integration?<br><a href=\"yes\">Yes</a> <a href=\"no\">No</a><br>You can change your mind later. Git integration will append time spent on commit into commit messages.",
@@ -557,5 +560,13 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     /** Rounded conversion of milliseconds to seconds. */
     public static long msToS(long ms) {
         return (ms + 500L) / 1000L;
+    }
+
+    public static VirtualFile getProjectBaseDir(Project project) {
+        @SystemIndependent final String basePath = project.getBasePath();
+        if (basePath == null) {
+            return null;
+        }
+        return LocalFileSystem.getInstance().findFileByPath(basePath);
     }
 }

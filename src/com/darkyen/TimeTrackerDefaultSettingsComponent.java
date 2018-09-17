@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
  * Only used to track default settings.
  */
 @State(name="DarkyenusTimeTrackerDefaults", storages = {@Storage("darkyenus-time-tracker-defaults.xml")})
-public class TimeTrackerDefaultSettingsComponent implements ApplicationComponent, PersistentStateComponent<TimeTrackerPersistentState> {
+public class TimeTrackerDefaultSettingsComponent implements BaseComponent, PersistentStateComponent<TimeTrackerPersistentState> {
 
 	private TimeTrackerPersistentState defaultState = new TimeTrackerPersistentState();
 
