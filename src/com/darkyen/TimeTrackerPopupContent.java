@@ -5,6 +5,7 @@ import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.BalloonBuilder;
+import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.util.registry.Registry;
@@ -32,6 +33,8 @@ import java.util.logging.Logger;
 final class TimeTrackerPopupContent extends Box {
 
 	private static final Logger LOG = Logger.getLogger(TimeTrackerPopupContent.class.getName());
+
+	JBPopup popup;
 
 	TimeTrackerPopupContent(TimeTrackerComponent component) {
 		super(BoxLayout.Y_AXIS);
@@ -141,8 +144,29 @@ final class TimeTrackerPopupContent extends Box {
 					});
 					timeButtons.add(timeButton);
 				}
-				this.add(timeButtons);
 			}
+			this.add(timeButtons);
+		}
+
+		{
+			final Box otherButtons = Box.createHorizontalBox();
+			this.add(otherButtons);
+
+			otherButtons.add(Box.createHorizontalGlue());
+
+			final JButton loadDefaults = new JButton("Reset to defaults");
+			loadDefaults.addActionListener(e1 -> {
+				component.loadState(TimeTrackerDefaultSettingsComponent.instance().getState());
+				popup.cancel();
+			});
+			otherButtons.add(loadDefaults);
+
+			final JButton saveDefaults = new JButton("Save as defaults");
+			saveDefaults.addActionListener(e1 -> {
+				TimeTrackerDefaultSettingsComponent.instance().loadState(component.getState());
+				popup.cancel();
+			});
+			otherButtons.add(saveDefaults);
 		}
 	}
 

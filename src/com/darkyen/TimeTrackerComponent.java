@@ -418,7 +418,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public void noStateLoaded() {
-        loadState(new TimeTrackerPersistentState());
+        loadState(TimeTrackerDefaultSettingsComponent.instance().getState());
     }
 
     @Override
@@ -505,7 +505,6 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @NotNull
     @Override
-    @Deprecated
     public synchronized TimeTrackerPersistentState getState() {
         final TimeTrackerPersistentState result = new TimeTrackerPersistentState();
         result.totalTimeSeconds = msToS(totalTimeMs);

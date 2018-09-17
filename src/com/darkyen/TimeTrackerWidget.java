@@ -48,6 +48,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     popupBuilder.setShowBorder(true);
                     popupBuilder.setShowShadow(true);
                     final JBPopup popup = popupBuilder.createPopup();
+                    content.popup = popup;
 
                     final Rectangle visibleRect = TimeTrackerWidget.this.getVisibleRect();
                     final Dimension preferredSize = content.getPreferredSize();
