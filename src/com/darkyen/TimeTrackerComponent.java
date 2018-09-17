@@ -148,7 +148,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         }
 
         lastTickMs = now;
-        repaintWidget();
+        repaintWidget(false);
     }
 
     private synchronized void otherComponentStarted() {
@@ -168,7 +168,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         } else {
             addTotalTimeMs(milliseconds);
         }
-        repaintWidget();
+        repaintWidget(false);
     }
 
     private synchronized void addTotalTimeMs(long milliseconds) {
@@ -212,7 +212,6 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             case IDLE: {
                 if (msToS(msInState) <= autoCountIdleSeconds) {
                     addTotalTimeMs(msInState);
-                    repaintWidget();
                 } else if (msInState > 1000) {
                     final Notification notification = NOTIFICATION_GROUP.createNotification(
                             "Welcome back!",
@@ -227,7 +226,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                         public void actionPerformed(@NotNull AnActionEvent e) {
                             if (primed) {
                                 addTotalTimeMs(msInState);
-                                repaintWidget();
+                                repaintWidget(false);
                                 primed = false;
                                 getTemplatePresentation().setText("Already counted in");
                                 e.getPresentation().setText("Counted in");
@@ -262,7 +261,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 break;
         }
 
-        repaintWidget();
+        repaintWidget(false);
     }
 
     public synchronized int getTotalTimeSeconds() {
@@ -407,7 +406,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public synchronized void setIdeTimePattern(@NotNull TimePattern ideTimePattern) {
         this.ideTimePattern = ideTimePattern;
-        repaintWidget();
+        repaintWidget(true);
     }
 
     @NotNull
@@ -428,10 +427,15 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         this.gitIntegrationComponent = new GitIntegration(project);
     }
 
-    private void repaintWidget() {
+    private void repaintWidget(boolean relayout) {
         final TimeTrackerWidget widget = this.widget;
         if (widget != null) {
-            UIUtil.invokeLaterIfNeeded(widget::repaint);
+            UIUtil.invokeLaterIfNeeded(() -> {
+                widget.repaint();
+                if (relayout) {
+                    widget.revalidate();
+                }
+            });
         }
     }
 
@@ -457,7 +461,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 setGitTimePattern(TimePattern.parse(state.gitTimePattern));
                 setGitIntegration(state.gitIntegration);
             }
-            repaintWidget();
+            repaintWidget(true);
         });
     }
 
