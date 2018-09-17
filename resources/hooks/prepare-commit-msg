@@ -1,9 +1,15 @@
 #!/bin/bash
 
 # Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00004
+#DarkyenusTimeTrackerHookScript00005
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
+
+# When this substring appears in the commit message (placed there by a template or by hand),
+# it will be replaced by the formatted duration.
+# Otherwise, the duration will be placed on a new line at the end of the commit message.
+# If you modify this string, DO NOT USE /SLASHES/ or other characters that "sed" command interprets!
+TIME_PLACEHOLDER="<#DTT#>"
 
 if [ "$2" = "merge" ] || [ "$2" = "squash" ]
 then
@@ -21,8 +27,6 @@ fi
 
 # Do not append time to amend commits - those already may have the time appended.
 # The only way to detect amend commit is the check whether or not the first line of commit message is empty.
-# That however does not work for "message" type commits (commit -m), but that is not a big deal,
-# as those won't have the time appended anyway, so they are not problematic.
 FIRST_COMMIT_LINE=$(head -n 1 "$1")
 if [ "$2" == "commit" ] && [ -n "$FIRST_COMMIT_LINE" ]
 then
@@ -32,67 +36,62 @@ fi
 
 DTT_TIME="$(dirname "$0")/../.darkyenus_time_tracker_commit_time"
 
-if [ -e "$DTT_TIME" ]
+if [ ! -e "$DTT_TIME" ]
 then
-	TIME_TOTAL_SEC=$(cat ${DTT_TIME})
-	TIME_REMAINING_SEC="$TIME_TOTAL_SEC"
-	TIME_MESSAGE=""
-	if (($TIME_TOTAL_SEC >= 3600))
-	then
-		TIME_MESSAGE="$TIME_MESSAGE $(($TIME_REMAINING_SEC / 3600)) hour"
-		if (($TIME_REMAINING_SEC / 3600 != 1))
-		then
-		    TIME_MESSAGE="${TIME_MESSAGE}s"
-		fi
-		TIME_REMAINING_SEC=$(($TIME_REMAINING_SEC % 3600))
-	fi
+	echo "No timing data found"
+	exit 0
+fi
 
-	if (($TIME_TOTAL_SEC >= 60))
-	then
-		TIME_MESSAGE="$TIME_MESSAGE $(($TIME_REMAINING_SEC / 60)) minute"
-		if (($TIME_REMAINING_SEC / 60 != 1))
-		then
-			TIME_MESSAGE="${TIME_MESSAGE}s"
-		fi
-        TIME_REMAINING_SEC=$(($TIME_REMAINING_SEC % 60))
-	fi
+# Load the file into array by lines (http://mywiki.wooledge.org/BashFAQ/005)
+unset lines
+while IFS= read -r; do
+    lines+=("$REPLY")
+done <${DTT_TIME}
+[[ $REPLY ]] && lines+=("$REPLY")
 
+TIME_TOTAL_SEC="${lines[0]}"
+TIME_FORMATTED="${lines[1]}"
+TIME_FORMATTED_ZERO="${lines[2]}"
+
+# Inject the time into the message
+RESULT_MESSAGE=""
+if $(grep -q "$TIME_PLACEHOLDER" "$1")
+then
+	# Replace the TIME_PLACEHOLDER with TIME_FORMATTED
+	TIME_FORMATTED_ESCAPED="$(echo "$TIME_FORMATTED" | sed -e 's/[\/&]/\\&/g')"
+
+	sed -i '' -e "s/${TIME_PLACEHOLDER}/${TIME_FORMATTED_ESCAPED}/" "$1"
+	RESULT_MESSAGE="$TIME_FORMATTED (replaced)"
+else
+	# Append TIME_FORMATTED at the end of the file
 	if (($TIME_TOTAL_SEC > 0))
 	then
-		if (($TIME_TOTAL_SEC < 60))
-		then
-			TIME_MESSAGE="$TIME_MESSAGE $TIME_REMAINING_SEC second"
-			if (($TIME_REMAINING_SEC != 1))
-	        then
-	            TIME_MESSAGE="${TIME_MESSAGE}s"
-	        fi
-        fi
-
-        printf "\n\nTook$TIME_MESSAGE" >> "$1"
-        echo "0" > "$DTT_TIME"
-
-        while true; do
-            DTT_TIME_CONTENT=$(cat "$DTT_TIME")
-            if [ ${DTT_TIME_CONTENT} == "0" ]; then
-                break
-            fi
-
-			# Warn and wait 1 second, then try again
-            echo "Time did not reset, trying again..."
-            sleep 1
-
-            echo "0" > "$DTT_TIME"
-            ECHO_EXIT=$?
-
-            if [ ${ECHO_EXIT} != "0" ]; then
-				echo "Reset attempt exited with $ECHO_EXIT!"
-            fi
-        done
-
-        echo "Commit took$TIME_MESSAGE"
-    else
-        echo "Commit took no time, not recording"
+		printf "\n\n$TIME_FORMATTED" >> "$1"
+		RESULT_MESSAGE="$TIME_FORMATTED (appended)"
+	else
+		RESULT_MESSAGE="Commit took no time, message unmodified"
 	fi
-else
-	echo "No timing data found"
 fi
+
+# Reset the time (there were problems with this in the past, so this is a bit of an overkill)
+NEW_DTT_TIME_CONTENT=$(printf "0\n$TIME_FORMATTED_ZERO\n$TIME_FORMATTED_ZERO\n")
+while true; do
+	echo "$NEW_DTT_TIME_CONTENT" > "$DTT_TIME"
+	ECHO_EXIT=$?
+
+	if [ ${ECHO_EXIT} != "0" ]; then
+		echo "Reset attempt exited with $ECHO_EXIT!"
+    fi
+
+    DTT_TIME_CONTENT=$(cat "$DTT_TIME")
+    if [ "$DTT_TIME_CONTENT" == "$NEW_DTT_TIME_CONTENT" ]; then
+        break
+    fi
+
+	# Warn and wait 1 second, then try again
+    echo "Time did not reset, trying again..."
+    sleep 1
+done
+
+echo "Time tracking: $RESULT_MESSAGE"
+exit 0

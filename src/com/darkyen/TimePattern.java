@@ -3,6 +3,8 @@ package com.darkyen;
 import java.util.*;
 import java.util.logging.Logger;
 
+import static com.darkyen.TimeTrackerComponent.msToS;
+
 /**
  *
  */
@@ -38,7 +40,7 @@ public final class TimePattern {
 	}
 
 	public String millisecondsToString(long ms) {
-		return secondsToString((int) ((ms + 500L) / 1000L));
+		return secondsToString((int) msToS(ms));
 	}
 
 	public String secondsToString(int timeSeconds) {

@@ -9,6 +9,8 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.apache.commons.codec.Charsets;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +32,15 @@ final class GitIntegration {
 		this.baseDir = project.getBaseDir();
 	}
 
-	void updateVersionTimeFile (long versionSeconds) {
+	/*
+	Git version time file format:
+	Three lines:
+	 1. Number of counted seconds (for tracking purposes of the plugin)
+	 2. Formatted first number
+	 3. Formatted 0 seconds (line 2 is reset to this when commit is made)
+	 */
+
+	void updateVersionTimeFile (long versionSeconds, @NotNull final TimePattern gitTimePattern) {
 		final Application application = ApplicationManager.getApplication();
 		application.invokeLater( () -> {
 			final VirtualFile child = baseDir.findChild(".git");
@@ -49,21 +59,21 @@ final class GitIntegration {
 				timeFile.setPreloadedContentHint(null);// Just to make sure
 				timeFile.setBOM(null);
 
-				final String line;
+				final String countedSecondsLine;
 				try (final BufferedReader reader = new BufferedReader(new InputStreamReader(timeFile.getInputStream(),
 						StandardCharsets.UTF_8))) {
-					line = reader.readLine();
+					countedSecondsLine = reader.readLine();
 				} catch (IOException e) {
 					LOG.log(Level.WARNING, "Failed to read git time file", e);
 					return null;
 				}
 
 				try {
-					if (line != null) {
-						return Long.parseLong(line);
+					if (countedSecondsLine != null) {
+						return Long.parseLong(countedSecondsLine);
 					}
 				} catch (NumberFormatException ignored) {
-					LOG.log(Level.WARNING, "Git time file did not contain only numbers: \"" + line + "\"");
+					LOG.log(Level.WARNING, "Git time file did not contain only numbers: \"" + countedSecondsLine + "\"");
 				}
 
 				return null;
@@ -73,11 +83,15 @@ final class GitIntegration {
 			final long newSeconds = versionSeconds == TimeTrackerComponent.RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
 			application.runWriteAction( () -> {
-				final byte[] newSecondsBytes = Long.toString(newSeconds).getBytes(StandardCharsets.UTF_8);
-				try (final OutputStream out = timeFile.getOutputStream(GitIntegration.this)) {
-					out.write(newSecondsBytes);
+				try (final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(timeFile.getOutputStream(GitIntegration.this), Charsets.UTF_8))) {
+					out.write(Long.toString(newSeconds));
+					out.write('\n');
+					out.write(gitTimePattern.secondsToString((int)newSeconds));
+					out.write('\n');
+					out.write(gitTimePattern.secondsToString(0));
+					out.write('\n');
 				} catch (IOException e) {
-					LOG.log(Level.WARNING, "Error while writing git time file", e);
+					LOG.log(Level.SEVERE, "Error while writing git time file", e);
 				}
 			});
 		}, ModalityState.NON_MODAL);
@@ -95,7 +109,7 @@ final class GitIntegration {
 
 	private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
 	private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00004";
+	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00005";
 
 	private VirtualFile getHookDirectory () {
 		final VirtualFile git = baseDir.findChild(".git");

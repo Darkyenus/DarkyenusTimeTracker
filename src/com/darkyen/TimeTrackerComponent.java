@@ -145,7 +145,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             statusStartedMs = System.currentTimeMillis();
 
             if (gitIntegration) {
-                gitIntegrationComponent.updateVersionTimeFile(RESET_TIME_TO_ZERO);
+                gitIntegrationComponent.updateVersionTimeFile(RESET_TIME_TO_ZERO, gitTimePattern);
             }
         } else {
             addTotalTimeMs(milliseconds);
@@ -157,7 +157,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         totalTimeMs = Math.max(0L, totalTimeMs + milliseconds);
 
         if (gitIntegration) {
-            gitIntegrationComponent.updateVersionTimeFile(milliseconds);
+            gitIntegrationComponent.updateVersionTimeFile(msToS(milliseconds), gitTimePattern);
         }
     }
 
@@ -192,7 +192,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 break;
             }
             case IDLE: {
-                if ((msInState + 500) / 1000 <= autoCountIdleSeconds) {
+                if (msToS(msInState) <= autoCountIdleSeconds) {
                     addTotalTimeMs(msInState);
                     repaintWidget();
                 } else if (msInState > 1000) {
@@ -254,7 +254,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             resultMs += Math.max(0L, now - statusStartedMs);
         }
 
-        return (int) ((resultMs + 500L) / 1000L); // Rounded conversion to seconds
+        return (int) msToS(resultMs);
     }
 
     public boolean isAutoStart() {
@@ -325,6 +325,11 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             gitIntegrationComponent.setupCommitHook(enabled);
             this.gitIntegration = enabled;
             if (enabled) {
+                // gitTimePattern may be null when we are just loading
+                if (gitTimePattern != null) {
+                    gitIntegrationComponent.updateVersionTimeFile(0, gitTimePattern);
+                }
+            } else {
                 nagAboutGitIntegrationIfNeeded();
             }
             return enabled;
@@ -355,7 +360,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     }
 
     private void nagAboutGitIntegrationIfNeeded() {
-        if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && gitIntegration) {
+        if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && !gitIntegration) {
             ApplicationManager.getApplication().invokeLater(() -> {
                 if (!gitIntegration && project.getBaseDir().findChild(".git") != null) {
                     Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
@@ -393,6 +398,9 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public synchronized void setGitTimePattern(@NotNull TimePattern gitTimePattern) {
         this.gitTimePattern = gitTimePattern;
+        if (gitIntegration) {
+            gitIntegrationComponent.updateVersionTimeFile(0, gitTimePattern);
+        }
     }
 
 
@@ -422,11 +430,13 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 setIdleThresholdMs(state.idleThresholdMs);
                 setAutoCountIdleSeconds(state.autoCountIdleSeconds);
                 setStopWhenIdleRatherThanPausing(state.stopWhenIdleRatherThanPausing);
-                setGitIntegration(state.gitIntegration);
                 setPauseOtherTrackerInstances(state.pauseOtherTrackerInstances);
                 setNaggedAbout(state.naggedAbout);
                 setIdeTimePattern(TimePattern.parse(state.ideTimePattern));
+
+                gitIntegration = false;//Otherwise setGitTimePattern triggers update
                 setGitTimePattern(TimePattern.parse(state.gitTimePattern));
+                setGitIntegration(state.gitIntegration);
             }
             repaintWidget();
         });
@@ -498,7 +508,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     @Deprecated
     public synchronized TimeTrackerPersistentState getState() {
         final TimeTrackerPersistentState result = new TimeTrackerPersistentState();
-        result.totalTimeSeconds = (totalTimeMs + 500) / 1000;
+        result.totalTimeSeconds = msToS(totalTimeMs);
 
         result.autoStart = autoStart;
         result.idleThresholdMs = idleThresholdMs;
@@ -527,5 +537,10 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         RUNNING,
         IDLE,
         STOPPED
+    }
+
+    /** Rounded conversion of milliseconds to seconds. */
+    public static long msToS(long ms) {
+        return (ms + 500L) / 1000L;
     }
 }
