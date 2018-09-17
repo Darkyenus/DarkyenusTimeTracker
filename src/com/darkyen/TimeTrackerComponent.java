@@ -62,8 +62,11 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     private boolean autoStart;
     private long idleThresholdMs;
-    private boolean gitIntegration;
+    private int autoCountIdleSeconds;
+    private boolean stopWhenIdleRatherThanPausing;
     private boolean pauseOtherTrackerInstances;
+
+    private boolean gitIntegration;
 
     private long naggedAbout = 0;
 
@@ -120,10 +123,10 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
         if (sinceLastTickMs > TICK_JUMP_DETECTION_THRESHOLD_MS) {
             final long lastValidTimeMs = lastTickMs + TICK_JUMP_DETECTION_THRESHOLD_MS;
-            setStatus(Status.IDLE, lastValidTimeMs);
+            setStatus(stopWhenIdleRatherThanPausing ? Status.STOPPED : Status.IDLE, lastValidTimeMs);
         } else if (sinceLastActivityMs >= idleThresholdMs) {
             final long lastValidTimeMs = lastActivityMs + idleThresholdMs;
-            setStatus(Status.IDLE, lastValidTimeMs);
+            setStatus(stopWhenIdleRatherThanPausing ? Status.STOPPED : Status.IDLE, lastValidTimeMs);
         }
 
         lastTickMs = now;
@@ -189,7 +192,10 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 break;
             }
             case IDLE: {
-                if (msInState > 1000) {
+                if ((msInState + 500) / 1000 <= autoCountIdleSeconds) {
+                    addTotalTimeMs(msInState);
+                    repaintWidget();
+                } else if (msInState > 1000) {
                     final Notification notification = NOTIFICATION_GROUP.createNotification(
                             "Welcome back!",
                             "Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
@@ -292,6 +298,22 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public synchronized void setIdleThresholdMs(long idleThresholdMs) {
         this.idleThresholdMs = idleThresholdMs;
+    }
+
+    public int getAutoCountIdleSeconds() {
+        return autoCountIdleSeconds;
+    }
+
+    public synchronized void setAutoCountIdleSeconds(int autoCountIdleSeconds) {
+        this.autoCountIdleSeconds = autoCountIdleSeconds;
+    }
+
+    public boolean isStopWhenIdleRatherThanPausing() {
+        return stopWhenIdleRatherThanPausing;
+    }
+
+    public void setStopWhenIdleRatherThanPausing(boolean stopWhenIdleRatherThanPausing) {
+        this.stopWhenIdleRatherThanPausing = stopWhenIdleRatherThanPausing;
     }
 
     public boolean isGitIntegration() {
@@ -398,6 +420,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 this.totalTimeMs = state.totalTimeSeconds * 1000L;
                 setAutoStart(state.autoStart);
                 setIdleThresholdMs(state.idleThresholdMs);
+                setAutoCountIdleSeconds(state.autoCountIdleSeconds);
+                setStopWhenIdleRatherThanPausing(state.stopWhenIdleRatherThanPausing);
                 setGitIntegration(state.gitIntegration);
                 setPauseOtherTrackerInstances(state.pauseOtherTrackerInstances);
                 setNaggedAbout(state.naggedAbout);
@@ -478,6 +502,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
         result.autoStart = autoStart;
         result.idleThresholdMs = idleThresholdMs;
+        result.autoCountIdleSeconds = autoCountIdleSeconds;
+        result.stopWhenIdleRatherThanPausing = stopWhenIdleRatherThanPausing;
         result.gitIntegration = gitIntegration;
         result.pauseOtherTrackerInstances = pauseOtherTrackerInstances;
 

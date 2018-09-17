@@ -434,7 +434,7 @@ public final class TimePattern {
 			}
 
 			final int oneLargeIsThisManyModified = largerUnit.of(modifiedUnit);
-			if (oneLargeIsThisManyModified > newValue) {
+			if (oneLargeIsThisManyModified <= newValue) {
 				map.put(modifiedUnit, newValue - oneLargeIsThisManyModified);
 				map.put(largerUnit, map.get(largerUnit) + 1);
 				redistributePossiblyOvergrownUnit(map, largerUnit);

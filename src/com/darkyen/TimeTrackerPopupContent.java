@@ -1,6 +1,7 @@
 package com.darkyen;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.BalloonBuilder;
@@ -43,11 +44,30 @@ final class TimeTrackerPopupContent extends Box {
 		this.add(optionsPanel);
 
 		{
-			optionsPanel.add(new JLabel("Idle threshold (sec):", JLabel.RIGHT));
-			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(component.getIdleThresholdMs() / 1000, 10, Integer.MAX_VALUE, 10));
+			final String[] modes = new String[] {
+					"Pause after (sec):",
+					"Stop after (sec):"
+			};
+			final ComboBox<String> modeComboBox = new ComboBox<>(modes);
+			modeComboBox.setSelectedIndex(component.isStopWhenIdleRatherThanPausing() ? 1 : 0);
+			modeComboBox.addActionListener(e -> {
+				component.setStopWhenIdleRatherThanPausing(modeComboBox.getSelectedIndex() == 1);
+			});
+			modeComboBox.setAlignmentX(1f);
+			optionsPanel.add(modeComboBox);
+
+			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(component.getIdleThresholdMs() / 1000, 0, Integer.MAX_VALUE, 10));
 			optionsPanel.add(idleThresholdSpinner);
 			idleThresholdSpinner.addChangeListener(ce ->
 					component.setIdleThresholdMs(((Number) idleThresholdSpinner.getValue()).longValue() * 1000));
+		}
+
+		{
+			optionsPanel.add(new JLabel("Auto-count pauses shorter than (sec):", JLabel.RIGHT));
+			final JSpinner autoCountSpinner = new JSpinner(new SpinnerNumberModel(component.getAutoCountIdleSeconds(), 0, Integer.MAX_VALUE, 10));
+			optionsPanel.add(autoCountSpinner);
+			autoCountSpinner.addChangeListener(ce ->
+					component.setAutoCountIdleSeconds(((Number) autoCountSpinner.getValue()).intValue()));
 		}
 
 		{
