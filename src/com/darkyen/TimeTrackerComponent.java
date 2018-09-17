@@ -1,9 +1,8 @@
 package com.darkyen;
 
-import com.intellij.notification.NotificationDisplayType;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
+import com.intellij.notification.*;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.components.*;
@@ -46,7 +45,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
     private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
-    private static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{lw \"week\"s} {ld \"day\"s} {lh \"hour\"s} {lm \"minute\"s} {ts \"second\"s}");
+    public static final TimePattern FULL_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
     private final Project project;
     private final GitIntegration gitIntegrationComponent;
@@ -191,17 +190,29 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             }
             case IDLE: {
                 if (msInState > 1000) {
-                    Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                    final Notification notification = NOTIFICATION_GROUP.createNotification(
                             "Welcome back!",
-                            "Idle for " + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + ".<br>This time is not counted. <a href=\"count\">Count it.</a>",
-                            NotificationType.INFORMATION,
-                            (n, event) -> {
-                                if ("count".equals(event.getDescription())) {
-                                    n.expire();
-                                    addTotalTimeMs(msInState);
-                                    repaintWidget();
-                                }
-                            }), project);
+                            "Gone for <b>" + FULL_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
+                            NotificationType.INFORMATION, null);
+
+                    notification.addAction(new AnAction("Count this time in") {
+
+                        private boolean primed = true;
+
+                        @Override
+                        public void actionPerformed(AnActionEvent e) {
+                            if (primed) {
+                                addTotalTimeMs(msInState);
+                                repaintWidget();
+                                primed = false;
+                                getTemplatePresentation().setText("Already counted in");
+                                e.getPresentation().setText("Counted in");
+                                notification.expire();
+                            }
+                        }
+                    });
+
+                    Notifications.Bus.notify(notification, project);
                 }
                 break;
             }
@@ -230,14 +241,14 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         repaintWidget();
     }
 
-    public synchronized long getTotalTimeSeconds() {
+    public synchronized int getTotalTimeSeconds() {
         long resultMs = this.totalTimeMs;
         if (this.status == Status.RUNNING) {
             final long now = System.currentTimeMillis();
             resultMs += Math.max(0L, now - statusStartedMs);
         }
 
-        return (resultMs + 500L) / 1000L; // Rounded conversion to seconds
+        return (int) ((resultMs + 500L) / 1000L); // Rounded conversion to seconds
     }
 
     public boolean isAutoStart() {
@@ -350,6 +361,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public synchronized void setIdeTimePattern(@NotNull TimePattern ideTimePattern) {
         this.ideTimePattern = ideTimePattern;
+        repaintWidget();
     }
 
     @NotNull

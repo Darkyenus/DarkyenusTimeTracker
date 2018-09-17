@@ -1,0 +1,139 @@
+<html>
+<head>
+<style>
+.omit {
+    color: white;
+    background-color: #0e6e6b;
+}
+.unit {
+    color: white;
+    background-color: #6c006c;
+}
+.unit-space {
+    color: white;
+    background-color: #00006d;
+}
+.unit-text {
+    color: white;
+    background-color: #6d6f03;
+}
+.unit-plural {
+    color: white;
+    background-color: #0f7002;
+}
+td {
+    border-style: inset;
+    padding: 5;
+}
+th {
+    padding: 5;
+}
+.note {
+    border-style: none;
+    font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<p>
+    <b>Time pattern</b> is a text with temporal placeholders,
+    which are patterns enclosed in {{ }} and substituted with time data.
+</p>
+
+<p>
+    Time placeholder syntax in "pseudo regex":<br>
+    <code>
+        <span class="omit">[lt0]?</span><span class="unit">[wdhms]</span><span class="unit-space"> ?</span><span class="unit-text">("[^"]+")?</span><span class="unit-plural">s?</span>
+    </code>
+</p>
+
+<ol>
+    <li><span class="omit">When to omit</span> (optional)
+        <ul>
+            <li>'l': Omit when leading - when it evaluates to zero and larger units are also zero</li>
+            <li>'t': Omit when trailing - when one of larger units is not zero</li>
+            <li>'0': Omit when zero - when evaluates to zero</li>
+            <li>nothing: Never omitted</li>
+        </ul>
+    </li>
+    <li><span class="unit">Time unit</span>
+        <ul>
+            <li>'s': Seconds</li>
+            <li>'m': Minutes</li>
+            <li>'h': Hours</li>
+            <li>'d': Days</li>
+            <li>'w': Weeks</li>
+        </ul>
+    </li>
+    <li><span class="unit-space">Unit space</span> (optional)
+        <ul>
+            <li>' ': Space will be added between number and the unit text if present</li>
+        </ul>
+    </li>
+    <li><span class="unit-text">Unit text</span> (optional)
+        <p>
+            Arbitrary text enclosed in "quotes". Enclosed text will be used as a unit after time number.
+            When omitted, time unit letter will be used.
+            Examples: "hour", "sec", "seconds", etc.
+        </p>
+    </li>
+    <li><span class="unit-plural">Pluralize unit text</span> (optional)
+        <ul>
+            <li>'s': Single letter s will be appended after unit text, when the amount is not 1</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Presence of units of time</h3>
+<p>
+    When particular unit is not present in the pattern, the time value is naturally expressed through those that are present.
+    For example template <code>{{h}} {{s}}</code> will render time amount of <i>1 hour, 1 minute and 1 second</i>
+    as <i>1h 66s</i>. When small units are omitted (or not present in the pattern at all), but they granularity is needed,
+    larger units may be rounded up if it would make the shown value more accurate.
+    For example <code>{{m}} {{ts}}</code> will render time amount of <i>99 seconds (= 1 minute and 33 seconds)</i> as <i>2m</i>.
+</p>
+
+<h3>Space handling</h3>
+<p>
+    After the result string is rendered, leading and trailing spaces are trimmed and sequences of multiple spaces
+    are collapsed into single space. This is done to handle double spaces that appear when a placeholder is omitted.
+</p>
+
+<h3>Examples</h3>
+
+<table>
+    <tr>
+        <th>Pattern</th>
+        <th>Rendered</th>
+        <th>Note</th>
+    </tr>
+    <tr>
+        <td><code>{{d}} {{h}} {{m}} {{s}}</code></td>
+        <td>5h 10m 56s</td>
+        <td class="note"></td>
+    </tr>
+    <tr>
+        <td><code>{{ld }} {{lh }} {{lm }} {{ts }}</code></td>
+        <td>5 h 11 m</td>
+        <td class="note">Hours omitted as leading zeros, seconds as trailing. 56 seconds round up to 11 minutes.</td>
+    </tr>
+    <tr>
+        <td><code>{{lh "hr"s}} {{lm "min"}} {{ts "sec"}}</code></td>
+        <td>10 min</td>
+        <td class="note">Default pattern</td>
+    </tr>
+    <tr>
+        <td><code>Took {{lh "hour"s}} {{lm "minute"s}} {{ts "second"s}}</code></td>
+        <td>Took 10 minutes</td>
+        <td class="note">Default pattern in git commit messages</td>
+    </tr>
+    <tr>
+        <td><code>#time {{lw}} {{ld}} {{lh}} {{m}}</code></td>
+        <td>#time 5h 11m</td>
+        <td class="note"><a href="https://confluence.atlassian.com/fisheye/using-smart-commits-298976812.html">JIRA Smart Commit</a> time format</td>
+    </tr>
+</table>
+
+</body>
+</html>

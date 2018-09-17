@@ -37,6 +37,65 @@ public final class TimePattern {
 		}
 	}
 
+	public String millisecondsToString(long ms) {
+		return secondsToString((int) ((ms + 500L) / 1000L));
+	}
+
+	public String secondsToString(int timeSeconds) {
+		EnumMap<TimeUnit, Integer> time = secondsToUnits(timeSeconds, units);
+
+		{
+			// When some units are omitted because they are trailing,
+			// adjust the unit-value distribution
+			final EnumSet<TimeUnit> participatingUnits = EnumSet.noneOf(TimeUnit.class);
+			for (Token token : tokens) {
+				if (token instanceof TimeToken) {
+					if (((TimeToken) token).willParticipate(time)) {
+						participatingUnits.add(((TimeToken) token).unit);
+					}
+				}
+			}
+
+			if (participatingUnits.size() < units.size()) {
+				time = secondsToUnits(timeSeconds, participatingUnits);
+			}
+		}
+
+		final StringBuilder sb = new StringBuilder();
+		for (Token token : tokens) {
+			token.append(sb, time);
+		}
+
+		// Remove leading, trailing and duplicate spaces
+		int writer = 0;
+		int reader = 0;
+		// Leading spaces
+		while (reader < sb.length() && sb.charAt(reader) == ' ') {
+			reader++;
+		}
+		trimming:
+		while (reader < sb.length()) {
+			// Normal characters
+			do {
+				sb.setCharAt(writer++, sb.charAt(reader++));
+				if (reader >= sb.length()) {
+					break trimming;
+				}
+			} while (sb.charAt(reader) != ' ');
+			// Spaces
+			do {
+				reader++;
+				if (reader >= sb.length()) {
+					break trimming;
+				}
+			} while (sb.charAt(reader) == ' ');
+			sb.setCharAt(writer++, ' ');
+		}
+		sb.setLength(writer);
+
+		return sb.toString();
+	}
+
 	public static TimePattern parse(CharSequence pattern) {
 		final ArrayList<ParseError> errors = new ArrayList<>();
 		final TimePattern result = parse(pattern, errors);
@@ -52,7 +111,7 @@ public final class TimePattern {
 		final ArrayList<Token> tokens = new ArrayList<>();
 
 		final StringBuilder literalBuffer = new StringBuilder();
-		for (int[] i = {0}; i[0] < pattern.length(); i[0]++) {
+		for (int[] i = {0}; i[0] < pattern.length(); ) {
 			final int originalI = i[0];
 			final TimeToken timeToken = parseTimeToken(pattern, i, parseErrors);
 			if (timeToken != null) {
@@ -63,8 +122,8 @@ public final class TimePattern {
 
 				tokens.add(timeToken);
 			} else {
-				i[0] = originalI;
-				literalBuffer.append(pattern.charAt(i[0]));
+				literalBuffer.append(pattern.charAt(originalI));
+				i[0] = originalI + 1;
 			}
 		}
 
@@ -72,41 +131,6 @@ public final class TimePattern {
 			tokens.add(new LiteralToken(literalBuffer.toString()));
 			literalBuffer.setLength(0);
 		}
-
-		// Setup space omits
-		// Space can be omitted when previous token is literal and ends with space and next token is also literal and
-		// starts with space. One of these can be a token out of bounds, but not both.
-		for (int i = 0; i < tokens.size(); i++) {
-			final Token token = tokens.get(i);
-			if (!(token instanceof TimeToken)) {
-				continue;
-			}
-
-			Token previousToken = i <= 0 ? null : tokens.get(i - 1);
-			Token nextToken = i + 1 >= tokens.size() ? null : tokens.get(i + 1);
-			if (previousToken == null && nextToken == null) {
-				// both tokens can't be out of bounds
-				continue;
-			}
-
-			boolean previousAllowsStrip = previousToken == null || previousToken instanceof LiteralToken && ((LiteralToken) previousToken).value.endsWith(" ");
-			boolean nextAllowsStrip = nextToken == null || nextToken instanceof LiteralToken && ((LiteralToken) nextToken).value.startsWith(" ");
-
-			if (!previousAllowsStrip || !nextAllowsStrip) {
-				// One of the tokens prevents striping
-				continue;
-			}
-
-			// Do the striping
-			if (nextToken != null) {
-				tokens.set(i + 1, new LiteralToken(((LiteralToken) nextToken).value.substring(1)));
-			} else {
-				final String value = ((LiteralToken) previousToken).value;
-				tokens.set(i - 1, new LiteralToken(value.substring(0, value.length() - 1)));
-			}
-			((TimeToken) token).appendSpaceWhenNotOmitted = true;
-		}
-
 
 		return new TimePattern(pattern.toString(), tokens);
 	}
@@ -124,10 +148,6 @@ public final class TimePattern {
 
 		positionRef[0] += required.length();
 		return true;
-	}
-
-	private static boolean isSpaceOrOutOfBounds(CharSequence source, int position) {
-		return position < 0 || position >= source.length() || source.charAt(position) == ' ';
 	}
 
 	/**
@@ -220,20 +240,6 @@ public final class TimePattern {
 		return new TimeToken(unit, mode, unitText, spaceBeforeUnit, pluralize ? "s" : null);
 	}
 
-	public String millisecondsToString(long ms) {
-		return secondsToString((int) ((ms + 500L) / 1000L));
-	}
-
-	public String secondsToString(int timeSeconds) {
-		final EnumMap<TimeUnit, Integer> time = secondsToUnits(timeSeconds, units);
-		final StringBuilder sb = new StringBuilder();
-		for (Token token : tokens) {
-			token.append(sb, time);
-		}
-		return sb.toString();
-	}
-
-
 	private interface Token {
 		void append(StringBuilder sb, EnumMap<TimeUnit, Integer> time);
 	}
@@ -258,61 +264,83 @@ public final class TimePattern {
 		private final TimeTokenMode mode;
 		private final String text;
 		private final String pluralizeWith;
-		public boolean appendSpaceWhenNotOmitted = false;
+		private final boolean unitPrefixedWithSpace;
 
 		TimeToken(TimeUnit unit, TimeTokenMode mode, String text, boolean unitPrefixedWithSpace, String pluralizeWith) {
 			this.unit = unit;
 			this.mode = mode;
 			this.text = text;
+			this.unitPrefixedWithSpace = unitPrefixedWithSpace;
 			this.pluralizeWith = pluralizeWith;
 		}
 
-		@Override
-		public void append(StringBuilder sb, EnumMap<TimeUnit, Integer> time) {
-			final int timeValue = time.get(unit);
+		public boolean willParticipate(EnumMap<TimeUnit, Integer> time) {
+			if (mode == TimeTokenMode.OMIT_TRAILING) {
+				for (TimeUnit timeUnit : unit.largerUnits()) {
+					if (time.getOrDefault(timeUnit, 0) != 0) {
+						// Omit: One of larger units is not zero, so this is unnecessary detail
+						return false;
+					}
+				}
+			}
 
-			shouldAppend:
+			return true;
+		}
+
+		private boolean willRender(EnumMap<TimeUnit, Integer> time) {
+			final Integer timeValue = time.get(unit);
+			if (timeValue == null) {
+				// Previously omitted value
+				return false;
+			}
+
 			switch (mode) {
 				case ALWAYS:
 				default:
 					// Always present
-					break;
+					return true;
 				case OMIT_LEADING:
 					if (timeValue != 0) {
-						break;
+						return true;
 					}
 					for (TimeUnit timeUnit : unit.largerUnits()) {
 						if (time.getOrDefault(timeUnit, 0) != 0) {
-							break shouldAppend;
+							return true;
 						}
 					}
 					// Omit: It is zero and all larger units are also zero
-					return;
+					return false;
 				case OMIT_TRAILING:
 					for (TimeUnit timeUnit : unit.largerUnits()) {
 						if (time.getOrDefault(timeUnit, 0) != 0) {
 							// Omit: One of larger units is not zero, so this is unnecessary detail
-							return;
+							return false;
 						}
 					}
-					break;
+					return true;
 				case OMIT_ZERO:
-					if (timeValue == 0) {
-						// Omit: This is zero
-						return;
-					}
-					break;
+					return timeValue != 0;
 			}
+		}
+
+		@Override
+		public void append(StringBuilder sb, EnumMap<TimeUnit, Integer> time) {
+			if (!willRender(time)) {
+				return;
+			}
+
+			final int timeValue = time.get(unit);
 
 			// This value should get appended
 			sb.append(timeValue);
+
+			if (unitPrefixedWithSpace) {
+				sb.append(' ');
+			}
+
 			sb.append(text);
 			if (pluralizeWith != null && timeValue != 1) {
 				sb.append(pluralizeWith);
-			}
-
-			if (appendSpaceWhenNotOmitted) {
-				sb.append(' ');
 			}
 		}
 	}
@@ -339,11 +367,14 @@ public final class TimePattern {
 		final int ofSeconds;
 
 		private TimeUnit[] largerUnits = null;
-		private TimeUnit[] smallerUnits = null;
 
 		TimeUnit(String unit, int ofSeconds) {
 			this.unit = unit;
 			this.ofSeconds = ofSeconds;
+		}
+
+		int of(TimeUnit smallerUnit) {
+			return ofSeconds / smallerUnit.ofSeconds;
 		}
 
 		TimeUnit[] largerUnits() {
@@ -352,15 +383,6 @@ public final class TimePattern {
 				largerUnits = this.largerUnits = Arrays.copyOf(UNITS, ordinal());
 			}
 			return largerUnits;
-		}
-
-		TimeUnit[] smallerUnits() {
-			TimeUnit[] smallerUnits = this.smallerUnits;
-			if (smallerUnits == null) {
-				final int ordinal = ordinal();
-				smallerUnits = this.smallerUnits = Arrays.copyOfRange(UNITS, ordinal + 1, UNITS.length);
-			}
-			return smallerUnits;
 		}
 
 		private static final TimeUnit[] UNITS = values();
@@ -379,6 +401,7 @@ public final class TimePattern {
 	 *     123 seconds in (WEEK, DAY, HOUR, MINUTE, SECOND) -> {WEEK: 0, DAY: 0, HOUR: 0, MINUTE: 2, SECOND: 3}
 	 *     123 seconds in (MINUTE) -> {MINUTE: 2}
 	 *     100 seconds in (MINUTE) -> {MINUTE: 2} because of rounding
+	 *     59 minutes and 59 seconds in (HOUR, MINUTE) -> {HOUR: 1, MINUTE: 0} because of rounding
 	 * </pre>
 	 */
 	private static EnumMap<TimeUnit, Integer> secondsToUnits(int seconds, EnumSet<TimeUnit> selectedUnits) {
@@ -393,8 +416,31 @@ public final class TimePattern {
 
 		if (seconds > 0 && lastUnit != null && seconds * 2 > lastUnit.ofSeconds) {
 			result.put(lastUnit, result.get(lastUnit) + 1);
+
+			redistributePossiblyOvergrownUnit(result, lastUnit);
 		}
 
 		return result;
+	}
+
+	private static void redistributePossiblyOvergrownUnit(EnumMap<TimeUnit, Integer> map, TimeUnit modifiedUnit) {
+		final int newValue = map.get(modifiedUnit);
+
+		final TimeUnit[] largerUnits = modifiedUnit.largerUnits();
+		for (int i = largerUnits.length - 1; i >= 0; i--) {
+			final TimeUnit largerUnit = largerUnits[i];
+			if (!map.containsKey(largerUnit)) {
+				continue;
+			}
+
+			final int oneLargeIsThisManyModified = largerUnit.of(modifiedUnit);
+			if (oneLargeIsThisManyModified > newValue) {
+				map.put(modifiedUnit, newValue - oneLargeIsThisManyModified);
+				map.put(largerUnit, map.get(largerUnit) + 1);
+				redistributePossiblyOvergrownUnit(map, largerUnit);
+			}
+
+			break;
+		}
 	}
 }

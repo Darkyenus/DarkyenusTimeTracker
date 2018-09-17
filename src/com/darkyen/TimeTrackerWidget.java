@@ -20,7 +20,6 @@ import java.awt.*;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.time.Duration;
 
 /**
  *
@@ -45,6 +44,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(content, null);
                     popupBuilder.setCancelOnClickOutside(true);
                     popupBuilder.setFocusable(true);
+                    popupBuilder.setRequestFocus(true);
                     popupBuilder.setShowBorder(true);
                     popupBuilder.setShowShadow(true);
                     final JBPopup popup = popupBuilder.createPopup();
@@ -53,6 +53,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     final Dimension preferredSize = content.getPreferredSize();
                     final RelativePoint point = new RelativePoint(TimeTrackerWidget.this, new Point(visibleRect.x+visibleRect.width - preferredSize.width, visibleRect.y - (preferredSize.height + 15)));
                     popup.show(point);
+
+                    // Not sure if needed, but sometimes the popup is not clickable for some mysterious reason
+                    // and it stopped happening when this was added
+                    content.requestFocus();
                 }
             }
         });
@@ -91,8 +95,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     @Override
     public void paintComponent(final Graphics g) {
-        final long timeToShow = component.getTotalTimeSeconds();
-        final String info = formatDuration(timeToShow);
+        final int timeToShow = component.getTotalTimeSeconds();
+        final String info = component.getIdeTimePattern().secondsToString(timeToShow);
 
         final Dimension size = getSize();
         final Insets insets = getInsets();
@@ -125,49 +129,6 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         g.drawString(info, xOffset + (totalBarLength - infoWidth) / 2, yOffset + infoHeight + (barHeight - infoHeight) / 2 - 1);
     }
 
-    /** @deprecated Use TimePattern instead */
-    @Deprecated
-    static String formatDuration(long secondDuration) {
-        final Duration duration = Duration.ofSeconds(secondDuration);
-        final StringBuilder sb = new StringBuilder();
-
-        boolean found = false;
-        boolean secondsRelevant = true;
-        final long hours = duration.toHours();
-        if(hours != 0) {
-            found = true;
-            secondsRelevant = false;
-            sb.append(hours).append(" hr");
-            if (hours != 1) {
-                sb.append("s");
-            }
-        }
-        final long minutes = duration.toMinutes() % 60;
-        if(found || minutes != 0) {
-            if(found) {
-                sb.append(" ");
-            }
-            found = true;
-            sb.append(minutes).append(" min");/*
-            if (minutes != 1) {
-                sb.append("s");
-            }*/
-        }
-        if(secondsRelevant) {
-            final long seconds = duration.getSeconds() % 60;
-            {
-                if(found) {
-                    sb.append(" ");
-                }
-                sb.append(seconds).append(" sec");/*
-            if (seconds != 1) {
-                sb.append("s");
-            }*/
-            }
-        }
-        return sb.toString();
-    }
-
     @Override
     public JComponent getComponent() {
         return this;
@@ -177,13 +138,41 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return JBUI.Fonts.label(11);
     }
 
-    private static final String SAMPLE_STRING = formatDuration(999999999999L);
+    private TimePattern getPreferredSize_lastPattern = null;
+    private Font getPreferredSize_lastFont = null;
+    private int getPreferredSize_lastWidth = -1;
 
     @Override
     public Dimension getPreferredSize() {
+        final Font widgetFont = getWidgetFont();
+        final FontMetrics fontMetrics = getFontMetrics(widgetFont);
+        final TimePattern pattern = component.getIdeTimePattern();
+        final int stringWidth;
+
+        if (widgetFont.equals(getPreferredSize_lastFont) && pattern.equals(getPreferredSize_lastPattern)) {
+            stringWidth = getPreferredSize_lastWidth;
+        } else {
+            int maxWidth = 0;
+            // Size may decrease with growing time, so we try different second boundaries
+            for (int seconds : new int[]{
+                    60,
+                    60 * 60,
+                    60 * 60 * 24,
+                    60 * 60 * 24 * 7,
+                    1999999999
+            }) {
+                maxWidth = Math.max(maxWidth, fontMetrics.stringWidth(pattern.secondsToString(seconds - 1)));
+            }
+            getPreferredSize_lastPattern = pattern;
+            getPreferredSize_lastFont = widgetFont;
+            getPreferredSize_lastWidth = maxWidth;
+            stringWidth = maxWidth;
+        }
+
+
         final Insets insets = getInsets();
-        int width = getFontMetrics(getWidgetFont()).stringWidth(SAMPLE_STRING) + insets.left + insets.right + JBUI.scale(2);
-        int height = getFontMetrics(getWidgetFont()).getHeight() + insets.top + insets.bottom + JBUI.scale(2);
+        int width = stringWidth + insets.left + insets.right + JBUI.scale(2);
+        int height = fontMetrics.getHeight() + insets.top + insets.bottom + JBUI.scale(2);
         return new Dimension(width, height);
     }
 
