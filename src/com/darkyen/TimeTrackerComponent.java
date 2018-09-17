@@ -16,6 +16,8 @@ import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.StatusBar;
@@ -25,9 +27,12 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.SystemIndependent;
 
 import java.awt.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +55,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     public static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
     private final Project project;
-    private final GitIntegration gitIntegrationComponent;
+    @Nullable
+    private GitIntegration gitIntegrationComponent;
 
     private TimeTrackerWidget widget;
     private StatusBar widgetStatusBar;
@@ -161,10 +167,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         if (milliseconds == RESET_TIME_TO_ZERO) {
             totalTimeMs = 0L;
             statusStartedMs = System.currentTimeMillis();
-
-            if (gitIntegration) {
-                gitIntegrationComponent.updateVersionTimeFile(RESET_TIME_TO_ZERO, gitTimePattern);
-            }
+            updateGitTime(RESET_TIME_TO_ZERO);
         } else {
             addTotalTimeMs(milliseconds);
         }
@@ -173,10 +176,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     private synchronized void addTotalTimeMs(long milliseconds) {
         totalTimeMs = Math.max(0L, totalTimeMs + milliseconds);
-
-        if (gitIntegration) {
-            gitIntegrationComponent.updateVersionTimeFile(msToS(milliseconds), gitTimePattern);
-        }
+        updateGitTime(msToS(milliseconds));
     }
 
     private synchronized void saveTime() {
@@ -337,25 +337,55 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         return gitIntegration;
     }
 
-    public synchronized boolean setGitIntegration(boolean enabled) {
-        try {
-            gitIntegrationComponent.setupCommitHook(enabled);
-            this.gitIntegration = enabled;
-            if (enabled) {
-                // gitTimePattern may be null when we are just loading
-                if (gitTimePattern != null) {
-                    gitIntegrationComponent.updateVersionTimeFile(0, gitTimePattern);
+    public synchronized boolean setGitIntegration(boolean enable) {
+        GitIntegration gitIntegrationComponent = this.gitIntegrationComponent;
+        if (gitIntegrationComponent == null) {
+            // Create it
+            final Path projectBase = convertToIOFile(getProjectBaseDir(project));
+            if (projectBase == null) {
+                if (enable) {
+                    Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                            "Failed to enable git integration",
+                            "Project is not on a local filesystem",
+                            NotificationType.WARNING, null), project);
                 }
-            } else {
-                nagAboutGitIntegrationIfNeeded();
+                return false;
             }
-            return enabled;
-        } catch (GitIntegration.CommitHookException ex) {
-            Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
-                    "Failed to "+(enabled ? "enable" : "disable")+" git integration",
-                    ex.getMessage(),
-                    NotificationType.WARNING, null), project);
-            return this.gitIntegration = false;
+            final Path gitDir = projectBase.resolve(".git");
+            final Path gitHooksDir = gitDir.resolve("hooks");
+            gitIntegrationComponent = this.gitIntegrationComponent = new GitIntegration(gitDir, gitHooksDir);
+        }
+
+        final GitIntegration.SetupCommitHookResult result = gitIntegrationComponent
+                .setupCommitHook(enable);
+        switch (result) {
+            case SUCCESS: {
+                this.gitIntegration = enable;
+                if (enable) {
+                    updateGitTime(0);
+                } else {
+                    nagAboutGitIntegrationIfNeeded();
+                }
+                return enable;
+            }
+            case INTERNAL_ERROR:
+            case HOOK_ALREADY_EXISTS:
+            case GIT_DIR_NOT_FOUND: {
+                Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                        "Failed to " + (enable ? "enable" : "disable") + " git integration",
+                        result.message,
+                        NotificationType.WARNING, null), project);
+                return this.gitIntegration = false;
+            }
+            case GIT_HOOKS_DIR_NOT_FOUND: {
+                //TODO
+
+                return false;
+            }
+            default: {
+                LOG.log(Level.SEVERE, "Invalid setupCommitHook result: " + result);
+                return false;
+            }
         }
     }
 
@@ -416,15 +446,19 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public synchronized void setGitTimePattern(@NotNull TimePattern gitTimePattern) {
         this.gitTimePattern = gitTimePattern;
-        if (gitIntegration) {
-            gitIntegrationComponent.updateVersionTimeFile(0, gitTimePattern);
+        updateGitTime(0);
+    }
+
+    private void updateGitTime(long seconds) {
+        final GitIntegration gitIntegrationComponent = this.gitIntegrationComponent;
+        final TimePattern gitTimePattern = this.gitTimePattern;
+        if (gitIntegration && gitIntegrationComponent != null && gitTimePattern != null) {
+            gitIntegrationComponent.updateVersionTimeFile(seconds, gitTimePattern);
         }
     }
 
-
     public TimeTrackerComponent(Project project) {
         this.project = project;
-        this.gitIntegrationComponent = new GitIntegration(project);
     }
 
     private void repaintWidget(boolean relayout) {
@@ -572,5 +606,20 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
             return null;
         }
         return LocalFileSystem.getInstance().findFileByPath(basePath);
+    }
+
+    @Nullable
+    private static Path convertToIOFile(@Nullable VirtualFile file) {
+        if (file == null || !file.isInLocalFileSystem()) {
+            return null;
+        }
+
+        // Based on LocalFileSystemBase.java
+        String path = file.getPath();
+        if (StringUtil.endsWithChar(path, ':') && path.length() == 2 && SystemInfo.isWindows) {
+            path += "/";
+        }
+
+        return Paths.get(path);
     }
 }
