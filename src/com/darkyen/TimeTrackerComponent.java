@@ -13,10 +13,10 @@ import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.editor.event.EditorEventMulticaster;
 import com.intellij.openapi.extensions.Extensions;
-import com.intellij.openapi.fileEditor.FileDocumentManagerAdapter;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.util.concurrency.EdtExecutorService;
@@ -80,7 +80,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private static final long TICK_JUMP_DETECTION_THRESHOLD_MS = TICK_DELAY_UNIT.toMillis(TICK_DELAY * 20);
 
     private DocumentListener autoStartDocumentListener = null;
-    private final FileDocumentManagerListener saveDocumentListener = new FileDocumentManagerAdapter() {
+    private final FileDocumentManagerListener saveDocumentListener = new FileDocumentManagerListener() {
         @Override
         public void beforeAllDocumentsSaving() {
             saveTime();
@@ -90,6 +90,22 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         public void beforeDocumentSaving(@NotNull Document document) {
             saveTime();
         }
+
+        // Default methods in 2018.3, but would probably crash in earlier versions
+        @Override
+        public void beforeFileContentReload(@NotNull VirtualFile file, @NotNull Document document) { }
+
+        @Override
+        public void fileWithNoDocumentChanged(@NotNull VirtualFile file) { }
+
+        @Override
+        public void fileContentReloaded(@NotNull VirtualFile file, @NotNull Document document) { }
+
+        @Override
+        public void fileContentLoaded(@NotNull VirtualFile file, @NotNull Document document) { }
+
+        @Override
+        public void unsavedDocumentsDropped() { }
     };
 
     private static final Set<TimeTrackerComponent> ALL_OPENED_TRACKERS = ContainerUtil.newConcurrentSet();
@@ -206,7 +222,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                         private boolean primed = true;
 
                         @Override
-                        public void actionPerformed(AnActionEvent e) {
+                        public void actionPerformed(@NotNull AnActionEvent e) {
                             if (primed) {
                                 addTotalTimeMs(msInState);
                                 repaintWidget();
@@ -270,7 +286,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         if (enabled) {
             editorEventMulticaster.addDocumentListener(autoStartDocumentListener = new DocumentListener() {
                 @Override
-                public void documentChanged(DocumentEvent e) {
+                public void documentChanged(@NotNull DocumentEvent e) {
                     if (getStatus() == Status.RUNNING) return;
                     //getSelectedTextEditor() must be run from event dispatch thread
                     EventQueue.invokeLater(() -> {

@@ -11,7 +11,6 @@ import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.util.registry.Registry;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.ui.JBUI;
-import org.apache.commons.codec.Charsets;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -22,10 +21,14 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.darkyen.TimeTrackerComponent.msToS;
 
 /**
  *
@@ -59,7 +62,7 @@ final class TimeTrackerPopupContent extends Box {
 			modeComboBox.setAlignmentX(1f);
 			optionsPanel.add(modeComboBox);
 
-			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(component.getIdleThresholdMs() / 1000, 0, Integer.MAX_VALUE, 10));
+			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(msToS(component.getIdleThresholdMs()), 0, Integer.MAX_VALUE, 10));
 			optionsPanel.add(idleThresholdSpinner);
 			idleThresholdSpinner.addChangeListener(ce ->
 					component.setIdleThresholdMs(((Number) idleThresholdSpinner.getValue()).longValue() * 1000));
@@ -193,8 +196,13 @@ final class TimeTrackerPopupContent extends Box {
 
 			String text;
 			try {
-				text = StreamUtil.readText(TimePatternTextField.class.getClassLoader()
-						.getResourceAsStream("time-pattern-help.html"), Charsets.UTF_8);
+				final InputStream stream = TimePatternTextField.class.getClassLoader()
+						.getResourceAsStream("time-pattern-help.html");
+				if (stream == null) {
+					text = "Failed to load: resource is missing";
+				} else {
+					text = StreamUtil.readText(stream, StandardCharsets.UTF_8);
+				}
 			} catch (IOException e) {
 				LOG.log(Level.SEVERE, "Failed to load time pattern text", e);
 				text = "Failed to load";

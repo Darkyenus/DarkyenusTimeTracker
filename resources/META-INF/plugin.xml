@@ -1,13 +1,13 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
-    <name>Darkyenus Time Tracker</name>
+    <name>Darkyen's Time Tracker</name>
     <version>1.4.0</version>
     <vendor email="darkyenus@gmail.com" url="http://darkyenus.github.io">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
     <description><![CDATA[
-      Simple plugin for lightweight tracking of time spent on project.<br>
-      Adds a single status bar widget: click or type to start counting, click again to stop.
+      Track the time spent on a project.<br>
+      Adds a single status bar widget. Click or type to start counting, click again to stop.
       Pauses the timer automatically when idle (after two minutes of inactivity by default).
       Time is saved in IDE's workspace files, does not clutter project's directory.
       <br>

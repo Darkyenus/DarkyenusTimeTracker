@@ -9,7 +9,6 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.apache.commons.codec.Charsets;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -83,7 +82,7 @@ final class GitIntegration {
 			final long newSeconds = versionSeconds == TimeTrackerComponent.RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
 			application.runWriteAction( () -> {
-				try (final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(timeFile.getOutputStream(GitIntegration.this), Charsets.UTF_8))) {
+				try (final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(timeFile.getOutputStream(GitIntegration.this), StandardCharsets.UTF_8))) {
 					out.write(Long.toString(newSeconds));
 					out.write('\n');
 					out.write(gitTimePattern.secondsToString((int)newSeconds));
