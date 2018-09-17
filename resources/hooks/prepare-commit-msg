@@ -5,7 +5,7 @@
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
-# When this substring appears in the commit message (placed there by a template or by hand),
+# When this substring appears in the commit message (placed there by a template),
 # it will be replaced by the formatted duration.
 # Otherwise, the duration will be placed on a new line at the end of the commit message.
 # If you modify this string, DO NOT USE /SLASHES/ or other characters that "sed" command interprets!
