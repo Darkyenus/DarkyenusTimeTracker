@@ -143,6 +143,15 @@ th {
     This can be useful for issue tracking systems, which use specially formatted string in commit messages
     to track time spent on issue.
 </p>
+<p>
+    Time for commits is tracked differently. It is counted in the same way as the time shown in the IDE widget,
+    but is reset to zero on commit. For example: work for 1 hour, commit "<i>Took 1 hour</i>", work for another 10 minutes,
+    commit "<i>Took 10 minutes</i>", IDE widget shows "<i>1 hr 10 min</i>".
+</p>
+<p>
+    Merge, squash and amend commits don't get time injected. Time is injected through <code>prepare-commit-msg</code> hook,
+    independently on the tool used to do the commit, i.e. you don't have to commit through the IDE for this feature to work.
+</p>
 
 </body>
 </html>

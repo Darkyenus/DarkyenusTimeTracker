@@ -1,22 +1,29 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyenus Time Tracker</name>
-    <version>1.3.6</version>
-    <vendor email="darkyenus@gmail.com" url="http://darkyenus.github.io">Darkyen</vendor>
+    <version>1.4.0</version>
+    <vendor email="darkyenus@gmail.com" url="http://darkyenus.github.io">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
     <description><![CDATA[
       Simple plugin for lightweight tracking of time spent on project.<br>
       Adds a single status bar widget: click or type to start counting, click again to stop.
-      Pauses the timer automatically when idle (after two minutes of inactivity).
+      Pauses the timer automatically when idle (after two minutes of inactivity by default).
       Time is saved in IDE's workspace files, does not clutter project's directory.
       <br>
       Right click timer widget for options.
       <br>
-      Optional git VCS integration, injects the time it took to create the commit into the commit message.
+      Optional git integration, injects the time it took to create the commit into the commit message.
     ]]></description>
 
     <change-notes><![CDATA[
+      <h3>Version 1.4.0</h3>
+      <ul>
+        <li>Specify the pattern with which the time shown in the widget and injected into the commits should be formatted (patterns can be different)</li>
+        <li>After being paused (idle or in different IDE window), balloon with the idle duration appears and allows to count the idle time in. Short times away can be counted in automatically.</li>
+        <li>Added option to stop, rather than pause, after being idle</li>
+        <li>Ability to save and load default configuration of the plugin</li>
+      </ul>
       <h3>Version 1.3.6</h3>
       <ul>
       <li>Fix occasional git time file creation failure</li>
