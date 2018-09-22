@@ -19,6 +19,7 @@
     <change-notes><![CDATA[
       <h3>Version 1.4.1</h3>
       <ul>
+        <li>Welcome back balloon is now in separately configurable notification group and logged by default.</li>
         <li>Non-standard git configurations should now work correctly, including .git in a different directory than project's root</li>
         <li>Fixed some nullability problems</li>
       </ul>

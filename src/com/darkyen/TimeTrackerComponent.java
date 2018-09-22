@@ -59,6 +59,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
     private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
+
+    private static final NotificationGroup IDLE_NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker - Idle time", NotificationDisplayType.BALLOON, true, null, EmptyIcon.ICON_0);
     public static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
     private final Project project;
@@ -230,10 +232,9 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 if (msToS(msInState) <= autoCountIdleSeconds) {
                     addTotalTimeMs(msInState);
                 } else if (msInState > 1000) {
-                    final Notification notification = NOTIFICATION_GROUP.createNotification(
-                            "Welcome back!",
+                    final Notification notification = IDLE_NOTIFICATION_GROUP.createNotification(
                             "Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
-                            NotificationType.INFORMATION, null);
+                            NotificationType.INFORMATION);
 
                     notification.addAction(new AnAction("Count this time in") {
 
