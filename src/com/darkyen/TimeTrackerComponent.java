@@ -61,7 +61,9 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     @Nullable
     private GitIntegration gitIntegrationComponent;
 
+    @Nullable
     private TimeTrackerWidget widget;
+    @Nullable
     private StatusBar widgetStatusBar;
 
 
@@ -78,13 +80,18 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private boolean pauseOtherTrackerInstances;
 
     private boolean gitIntegration;
-    private String gitHooksPath;
+    @NotNull
+    private String gitHooksPath = TimeTrackerPersistentState.DEFAULT_GIT_HOOKS_PATH;
 
     private long naggedAbout = 0;
 
+    // Nullable only until initialization is done
+    @Nullable
     private TimePattern ideTimePattern;
+    @Nullable
     private TimePattern gitTimePattern;
 
+    @Nullable
     private ScheduledFuture<?> ticker;
 
     private static final long TICK_DELAY = 1;
@@ -478,7 +485,9 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @NotNull
     public TimePattern getIdeTimePattern() {
-        return ideTimePattern;
+        // widget sometimes manages to ask for the pattern before initialization, so we return dummy value
+        final TimePattern pattern = this.ideTimePattern;
+        return pattern == null ? NOTIFICATION_TIME_FORMATTING : pattern;
     }
 
     public synchronized void setIdeTimePattern(@NotNull TimePattern ideTimePattern) {
@@ -488,7 +497,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @NotNull
     public TimePattern getGitTimePattern() {
-        return gitTimePattern;
+        final TimePattern pattern = this.gitTimePattern;
+        return pattern == null ? NOTIFICATION_TIME_FORMATTING : pattern;
     }
 
     public synchronized void setGitTimePattern(@NotNull TimePattern gitTimePattern) {
@@ -624,8 +634,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
         result.naggedAbout = naggedAbout;
 
-        result.ideTimePattern = ideTimePattern.source;
-        result.gitTimePattern = gitTimePattern.source;
+        result.ideTimePattern = ideTimePattern != null ? ideTimePattern.source : TimeTrackerPersistentState.DEFAULT_IDE_TIME_PATTERN;
+        result.gitTimePattern = gitTimePattern != null ? gitTimePattern.source : TimeTrackerPersistentState.DEFAULT_GIT_TIME_PATTERN;
         return result;
     }
 

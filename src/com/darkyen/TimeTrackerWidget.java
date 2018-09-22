@@ -80,6 +80,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         Toolkit.getDefaultToolkit().addAWTEventListener(this,
                 AWTEvent.KEY_EVENT_MASK |
                         AWTEvent.MOUSE_EVENT_MASK |
+                        AWTEvent.MOUSE_WHEEL_EVENT_MASK |
                         AWTEvent.MOUSE_MOTION_EVENT_MASK
         );
     }
