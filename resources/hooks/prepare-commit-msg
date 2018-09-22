@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00005
+#DarkyenusTimeTrackerHookScript00006
 
 # Script (can be modified, but may be overwritten if new plugin version is installed):
 
@@ -34,7 +34,8 @@ then
 	exit 0
 fi
 
-DTT_TIME="$(dirname "$0")/../.darkyenus_time_tracker_commit_time"
+RELATIVE_DTT_TIME_PATH="<<<<RELATIVE_DTT_TIME_PATH_REPLACED_BY_PLUGIN_PLACEHOLDER>>>>"
+DTT_TIME="$(dirname "$0")/$RELATIVE_DTT_TIME_PATH"
 
 if [ ! -e "$DTT_TIME" ]
 then

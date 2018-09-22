@@ -36,11 +36,15 @@ import org.jetbrains.annotations.SystemIndependent;
 import java.awt.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.darkyen.GitIntegration.SetupCommitHookResult.GIT_DIR_NOT_FOUND;
+import static com.darkyen.GitIntegration.SetupCommitHookResult.GIT_HOOKS_DIR_NOT_FOUND;
 
 /**
  * Every entry-point method of this class is to be synchronized.
@@ -80,6 +84,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private boolean pauseOtherTrackerInstances;
 
     private boolean gitIntegration;
+    @NotNull
+    private String gitRepoPath = TimeTrackerPersistentState.DEFAULT_GIT_REPO_PATH;
     @NotNull
     private String gitHooksPath = TimeTrackerPersistentState.DEFAULT_GIT_HOOKS_PATH;
 
@@ -363,7 +369,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         GitIntegration gitIntegrationComponent = this.gitIntegrationComponent;
         if (gitIntegrationComponent == null) {
             // Create it
-            final Path gitDir = projectBase.resolve(".git");
+            final Path gitDir = projectBase.resolve(gitRepoPath);
             final Path gitHooksDir = projectBase.resolve(gitHooksPath);
             gitIntegrationComponent = this.gitIntegrationComponent = new GitIntegration(gitDir, gitHooksDir);
         }
@@ -379,18 +385,18 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 return this.gitIntegration = enable;
             }
             case INTERNAL_ERROR:
-            case HOOK_ALREADY_EXISTS:
-            case GIT_DIR_NOT_FOUND: {
+            case HOOK_ALREADY_EXISTS: {
                 Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
                         "Failed to " + (enable ? "enable" : "disable") + " git integration",
                         result.message,
                         NotificationType.WARNING, null), project);
                 return this.gitIntegration = false;
             }
+            case GIT_DIR_NOT_FOUND:
             case GIT_HOOKS_DIR_NOT_FOUND: {
                 final Notification notification = NOTIFICATION_GROUP.createNotification(
                         "Failed to enable git integration",
-                        "'.git/hooks' directory not found",
+                        result == GIT_DIR_NOT_FOUND ? "'.git' directory not found" : "'.git/hooks' directory not found",
                         NotificationType.WARNING, null);
                 notification.addAction(new AnAction("Find manually") {
                     @Override
@@ -408,24 +414,41 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                                                     .withShowHiddenFiles(true)
                                                     .withRoots(getProjectBaseDir(project))
                                                     .withHideIgnored(false)
-                                                    .withTitle("Select .git/hooks Directory"), project, null);
+                                                    .withTitle(result == GIT_DIR_NOT_FOUND ? "Select .git Directory" : "Select .git/hooks Directory"), project, null);
 
                             final VirtualFile[] chosen = fileChooser.choose(project);
-                            Path hooks = null;
+                            Path chosenPath = null;
                             if (chosen.length >= 1) {
-                                hooks = convertToIOFile(chosen[0]);
+                                chosenPath = convertToIOFile(chosen[0]);
                             }
-                            if (hooks == null) {
+                            if (chosenPath == null) {
+                                LOG.log(Level.INFO, "No valid path chosen " + Arrays.toString(chosen));
                                 return;
                             }
 
                             synchronized (TimeTrackerComponent.this) {
-                                TimeTrackerComponent.this.gitIntegrationComponent = null;
-                                if (hooks.startsWith(projectBase)) {
-                                    TimeTrackerComponent.this.gitHooksPath = projectBase.relativize(hooks).toString();
+                                if (chosenPath.startsWith(projectBase)) {
+                                    chosenPath = projectBase.relativize(chosenPath);
                                 } else {
-                                    TimeTrackerComponent.this.gitHooksPath = hooks.toAbsolutePath().toString();
+                                    chosenPath = chosenPath.toAbsolutePath();
                                 }
+
+                                TimeTrackerComponent.this.gitIntegrationComponent = null;
+
+                                String chosenPathString = chosenPath.toString();
+                                if (result == GIT_DIR_NOT_FOUND) {
+                                    TimeTrackerComponent.this.gitRepoPath = chosenPathString;
+                                    TimeTrackerComponent.this.gitHooksPath = chosenPath.resolve("hooks").toString();
+                                } else if (result == GIT_HOOKS_DIR_NOT_FOUND) {
+                                    if (chosenPathString.equals(TimeTrackerComponent.this.gitRepoPath)) {
+                                        LOG.log(Level.WARNING, "User selected same hooks directory as .git, probably meant that/hooks");
+                                        chosenPathString = chosenPath.resolve("hooks").toString();
+                                    }
+                                    TimeTrackerComponent.this.gitHooksPath = chosenPathString;
+                                } else {
+                                    throw new AssertionError("not expected: "+result);
+                                }
+
                                 setGitIntegration(true);
                             }
                         }, ModalityState.NON_MODAL);
@@ -550,6 +573,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
                 gitIntegration = false;//Otherwise setGitTimePattern triggers update
                 setGitTimePattern(TimePattern.parse(state.gitTimePattern));
+                this.gitRepoPath = state.gitRepoPath;
                 this.gitHooksPath = state.gitHooksPath;
                 setGitIntegration(state.gitIntegration);
             }
@@ -629,6 +653,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         result.autoCountIdleSeconds = autoCountIdleSeconds;
         result.stopWhenIdleRatherThanPausing = stopWhenIdleRatherThanPausing;
         result.gitIntegration = gitIntegration;
+        result.gitRepoPath = gitRepoPath;
         result.gitHooksPath = gitHooksPath;
         result.pauseOtherTrackerInstances = pauseOtherTrackerInstances;
 

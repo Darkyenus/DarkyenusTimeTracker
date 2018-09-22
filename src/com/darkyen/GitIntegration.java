@@ -25,6 +25,7 @@ final class GitIntegration {
 
 	private static final Logger LOG = Logger.getLogger("com.darkyen.GitIntegration");
 
+	private static final String DTT_TIME_RELATIVE_PATH_PLACEHOLDER = "<<<<RELATIVE_DTT_TIME_PATH_REPLACED_BY_PLUGIN_PLACEHOLDER>>>>";
 	private static final String DTT_TIME_FILE_NAME = ".darkyenus_time_tracker_commit_time";
 
 	@NotNull
@@ -35,6 +36,10 @@ final class GitIntegration {
 	GitIntegration (@NotNull Path gitDirectory, @NotNull Path hooksDirectory) {
 		this.gitDirectory = gitDirectory;
 		this.hooksDirectory = hooksDirectory;
+	}
+
+	private Path timeFile() {
+		return gitDirectory.resolve(DTT_TIME_FILE_NAME);
 	}
 
 	/*
@@ -52,7 +57,7 @@ final class GitIntegration {
 				return;
 			}
 
-			final Path timeFile = gitDirectory.resolve(DTT_TIME_FILE_NAME);
+			final Path timeFile = timeFile();
 
 			long existingSeconds = 0;
 			{
@@ -90,22 +95,27 @@ final class GitIntegration {
 		}, ModalityState.NON_MODAL);
 	}
 
-	private static byte[] _prepare_commit_message_hook_content = null;
+	private static String prepareCommitMessageHookContent_cache = null;
 
-	private static byte[] prepareCommitMessageHookContent () throws IOException {
-		if (_prepare_commit_message_hook_content == null) {
-			_prepare_commit_message_hook_content = StreamUtil.loadFromStream(GitIntegration.class.getResourceAsStream("/hooks/"
-				+ PREPARE_COMMIT_MESSAGE_HOOK_NAME));
+	private static String prepareCommitMessageHookContent (Path timeTrackerFile, Path gitHooksDirectory) throws IOException {
+		String content = GitIntegration.prepareCommitMessageHookContent_cache;
+		if (content == null) {
+			content = GitIntegration.prepareCommitMessageHookContent_cache =
+					StreamUtil.readText(GitIntegration.class.getResourceAsStream(
+							"/hooks/"+ PREPARE_COMMIT_MESSAGE_HOOK_NAME), StandardCharsets.UTF_8);
 		}
-		return _prepare_commit_message_hook_content;
+
+		return content.replace(DTT_TIME_RELATIVE_PATH_PLACEHOLDER, gitHooksDirectory.relativize(timeTrackerFile).toString());
 	}
 
 	private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
 	private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00005";
+	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00006";
 
-	private static void fillWithHookContent (Path hook) throws IOException {
-		Files.write(hook, prepareCommitMessageHookContent());
+	private static void fillWithHookContent (Path timeTrackerFile, Path hook) throws IOException {
+		try (BufferedWriter writer = Files.newBufferedWriter(hook, StandardCharsets.UTF_8)) {
+			writer.write(prepareCommitMessageHookContent(timeTrackerFile, hook.getParent()));
+		}
 		try {
 			final HashSet<PosixFilePermission> permissions = new HashSet<>(Files.getPosixFilePermissions(hook));
 			permissions.add(PosixFilePermission.OTHERS_EXECUTE);
@@ -129,11 +139,12 @@ final class GitIntegration {
 		}
 
 		try {
+			final Path timeFile = timeFile();
 			final Path hook = hooksDirectory.resolve(PREPARE_COMMIT_MESSAGE_HOOK_NAME);
 			if (!Files.exists(hook)) {
 				if (enable) {
 					// Create new hook
-					fillWithHookContent(hook);
+					fillWithHookContent(timeFile, hook);
 					return SetupCommitHookResult.SUCCESS;
 				} else {
 					// All good, no hook is present
@@ -151,7 +162,7 @@ final class GitIntegration {
 						return SetupCommitHookResult.SUCCESS;
 					} else if (isTimeTrackerHook) {
 						// There is our hook, but old, replace
-						fillWithHookContent(hook);
+						fillWithHookContent(timeFile, hook);
 						return SetupCommitHookResult.SUCCESS;
 					} else {
 						// This is not our hook!
