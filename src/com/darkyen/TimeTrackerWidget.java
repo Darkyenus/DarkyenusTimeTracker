@@ -26,6 +26,8 @@ import java.awt.event.MouseEvent;
  */
 public final class TimeTrackerWidget extends JButton implements CustomStatusBarWidget, AWTEventListener {
 
+    public static final String ID = "com.darkyen.DarkyenusTimeTracker";
+
     private final TimeTrackerComponent component;
 
     TimeTrackerWidget(TimeTrackerComponent component) {
@@ -66,7 +68,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     @NotNull
     @Override
     public String ID() {
-        return "com.darkyen.DarkyenusTimeTracker";
+        return ID;
     }
 
     @Nullable

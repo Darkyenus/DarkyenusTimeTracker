@@ -1,6 +1,7 @@
 package com.darkyen;
 
 import com.intellij.notification.*;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
@@ -52,7 +53,7 @@ import static com.darkyen.GitIntegration.SetupCommitHookResult.GIT_HOOKS_DIR_NOT
  * Each operation that needs to be on particular thread must do it itself.
  */
 @State(name="DarkyenusTimeTracker", storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE)})
-public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerPersistentState> {
+public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerPersistentState>, Disposable {
 
     private static final Logger LOG = Logger.getLogger(TimeTrackerComponent.class.getName());
     private static final boolean DEBUG_LIFECYCLE = false;
@@ -70,8 +71,6 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Nullable
     private TimeTrackerWidget widget;
-    @Nullable
-    private StatusBar widgetStatusBar;
 
 
     private long totalTimeMs = 0;
@@ -611,28 +610,35 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         return "TimeTrackerComponent";
     }
 
+    @Nullable
+    private StatusBar widgetStatusBar() {
+        final WindowManager windowManager = WindowManager.getInstance();
+        if (windowManager == null) {
+            return null;
+        }
+        return windowManager.getStatusBar(project);
+    }
+
     @Override
     public void projectOpened() {
         if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "projectOpened() "+this);
         UIUtil.invokeLaterIfNeeded(() -> {
+            TimeTrackerWidget widget;
             synchronized (this) {
+                widget = this.widget;
                 if (widget == null) {
-                    final WindowManager windowManager = WindowManager.getInstance();
-                    if (windowManager == null) {
-                        LOG.log(Level.SEVERE, "Can't initialize time tracking widget, WindowManager is null");
-                        return;
-                    }
-                    final StatusBar statusBar = windowManager.getStatusBar(project);
-                    if (statusBar == null) {
-                        LOG.log(Level.SEVERE, "Can't initialize time tracking widget, status bar returned by IDE is null");
-                        return;
-                    }
-
-                    final TimeTrackerWidget widget = new TimeTrackerWidget(this);
-                    statusBar.addWidget(widget, "before Memory");
-                    this.widget = widget;
-                    this.widgetStatusBar = statusBar;
+                    this.widget = widget = new TimeTrackerWidget(this);
                 }
+            }
+
+            final StatusBar statusBar = widgetStatusBar();
+            if (statusBar != null) {
+                // anchor: Memory is a widget that seems to be always present and always at the rightmost corner.
+                // (it may be hidden, but it is there)
+                // If that changes in the future, the widget will still be added correctly, but maybe in a different location
+                statusBar.addWidget(widget, "before Memory", this);
+            } else {
+                LOG.log(Level.SEVERE, "Can't initialize time tracking widget, status bar is null");
             }
         });
     }
@@ -641,12 +647,10 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     public void projectClosed() {
         if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "projectClosed() "+this);
         UIUtil.invokeLaterIfNeeded(() -> {
-            synchronized (this) {
-                if (widget != null && this.widgetStatusBar != null) {
-                    widgetStatusBar.removeWidget(widget.ID());
-                    this.widget = null;
-                    this.widgetStatusBar = null;
-                }
+            final StatusBar statusBar = widgetStatusBar();
+            if (statusBar != null) {
+                // Usually null, but maybe can sometimes happen that the project is only closed and not disposed?
+                statusBar.removeWidget(TimeTrackerWidget.ID);
             }
         });
     }
@@ -686,6 +690,11 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     @Override
     public String toString() {
         return "TTC("+project+")@"+System.identityHashCode(this);
+    }
+
+    @Override
+    public void dispose() {
+        // Everything is implemented in disposeComponent()
     }
 
     public enum Status {
