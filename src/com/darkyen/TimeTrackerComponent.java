@@ -55,6 +55,7 @@ import static com.darkyen.GitIntegration.SetupCommitHookResult.GIT_HOOKS_DIR_NOT
 public final class TimeTrackerComponent implements ProjectComponent, PersistentStateComponent<TimeTrackerPersistentState> {
 
     private static final Logger LOG = Logger.getLogger(TimeTrackerComponent.class.getName());
+    private static final boolean DEBUG_LIFECYCLE = false;
 
     static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
@@ -540,6 +541,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     public TimeTrackerComponent(Project project) {
         this.project = project;
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "Instantiated "+this);
     }
 
     private void repaintWidget(boolean relayout) {
@@ -556,11 +558,13 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public void noStateLoaded() {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "noStateLoaded() "+this);
         loadState(TimeTrackerDefaultSettingsComponent.instance().getState());
     }
 
     @Override
     public void loadState(@NotNull TimeTrackerPersistentState state) {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "loadState() "+this);
         ApplicationManager.getApplication().invokeLater(() -> {
             synchronized (this) {
                 this.totalTimeMs = state.totalTimeSeconds * 1000L;
@@ -584,6 +588,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public synchronized void initComponent() {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "initComponent() "+this);
         ALL_OPENED_TRACKERS.add(this);
         Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME)
                 .registerExtension(saveDocumentListener);
@@ -591,6 +596,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public synchronized void disposeComponent() {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "disposeComponent() "+this);
         ALL_OPENED_TRACKERS.remove(this);
         Extensions.getArea(null).getExtensionPoint(FileDocumentManagerListener.EP_NAME)
                 .unregisterExtension(saveDocumentListener);
@@ -607,7 +613,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public void projectOpened() {
-        ApplicationManager.getApplication().invokeLater(() -> {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "projectOpened() "+this);
+        UIUtil.invokeLaterIfNeeded(() -> {
             synchronized (this) {
                 if (widget == null) {
                     final WindowManager windowManager = WindowManager.getInstance();
@@ -622,7 +629,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                     }
 
                     final TimeTrackerWidget widget = new TimeTrackerWidget(this);
-                    statusBar.addWidget(widget);
+                    statusBar.addWidget(widget, "before Memory");
                     this.widget = widget;
                     this.widgetStatusBar = statusBar;
                 }
@@ -632,7 +639,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public void projectClosed() {
-        ApplicationManager.getApplication().invokeLater(() -> {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "projectClosed() "+this);
+        UIUtil.invokeLaterIfNeeded(() -> {
             synchronized (this) {
                 if (widget != null && this.widgetStatusBar != null) {
                     widgetStatusBar.removeWidget(widget.ID());
@@ -646,6 +654,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     @NotNull
     @Override
     public synchronized TimeTrackerPersistentState getState() {
+        if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "getState() "+this);
         final TimeTrackerPersistentState result = new TimeTrackerPersistentState();
         result.totalTimeSeconds = msToS(totalTimeMs);
 
@@ -672,6 +681,11 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         if (status == Status.IDLE) {
             setStatus(Status.RUNNING, now);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "TTC("+project+")@"+System.identityHashCode(this);
     }
 
     public enum Status {
