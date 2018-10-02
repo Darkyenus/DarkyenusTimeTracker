@@ -65,7 +65,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private static final NotificationGroup IDLE_NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker - Idle time", NotificationDisplayType.BALLOON, true, null, EmptyIcon.ICON_0);
     public static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
-    private final Project project;
+    @Nullable
+    private final Project _project;
     @Nullable
     private GitIntegration gitIntegrationComponent;
 
@@ -232,28 +233,31 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 if (msToS(msInState) <= autoCountIdleSeconds) {
                     addTotalTimeMs(msInState);
                 } else if (msInState > 1000) {
-                    final Notification notification = IDLE_NOTIFICATION_GROUP.createNotification(
-                            "Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
-                            NotificationType.INFORMATION);
+                    final Project project = project();
+                    if (project != null) {
+                        final Notification notification = IDLE_NOTIFICATION_GROUP.createNotification(
+                                "Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
+                                NotificationType.INFORMATION);
 
-                    notification.addAction(new AnAction("Count this time in") {
+                        notification.addAction(new AnAction("Count this time in") {
 
-                        private boolean primed = true;
+                            private boolean primed = true;
 
-                        @Override
-                        public void actionPerformed(@NotNull AnActionEvent e) {
-                            if (primed) {
-                                addTotalTimeMs(msInState);
-                                repaintWidget(false);
-                                primed = false;
-                                getTemplatePresentation().setText("Already counted in");
-                                e.getPresentation().setText("Counted in");
-                                notification.expire();
+                            @Override
+                            public void actionPerformed(@NotNull AnActionEvent e) {
+                                if (primed) {
+                                    addTotalTimeMs(msInState);
+                                    repaintWidget(false);
+                                    primed = false;
+                                    getTemplatePresentation().setText("Already counted in");
+                                    e.getPresentation().setText("Counted in");
+                                    notification.expire();
+                                }
                             }
-                        }
-                    });
+                        });
 
-                    Notifications.Bus.notify(notification, project);
+                        Notifications.Bus.notify(notification, project);
+                    }
                 }
                 break;
             }
@@ -309,7 +313,8 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                     if (getStatus() == Status.RUNNING) return;
                     //getSelectedTextEditor() must be run from event dispatch thread
                     EventQueue.invokeLater(() -> {
-                        if (project.isDisposed()) return;
+                        final Project project = project();
+                        if (project == null) return;
 
                         final Editor selectedTextEditor = FileEditorManager.getInstance(project).getSelectedTextEditor();
                         if (selectedTextEditor == null) return;
@@ -356,15 +361,22 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     }
 
     public synchronized Boolean setGitIntegration(boolean enable) {
-        final Path projectBase = convertToIOFile(getProjectBaseDir(project));
-        if (projectBase == null) {
-            if (enable) {
-                Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
-                        "Failed to enable git integration",
-                        "Project is not on a local filesystem",
-                        NotificationType.WARNING, null), project);
+        final Path projectBase;
+        {
+            final Project project = project();
+            if (project == null) {
+                return false;
             }
-            return false;
+            projectBase = convertToIOFile(getProjectBaseDir(project));
+            if (projectBase == null) {
+                if (enable) {
+                    Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+                            "Failed to enable git integration",
+                            "Project is not on a local filesystem",
+                            NotificationType.WARNING, null), project);
+                }
+                return false;
+            }
         }
 
         GitIntegration gitIntegrationComponent = this.gitIntegrationComponent;
@@ -390,7 +402,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                 Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
                         "Failed to " + (enable ? "enable" : "disable") + " git integration",
                         result.message,
-                        NotificationType.WARNING, null), project);
+                        NotificationType.WARNING, null), project());
                 return this.gitIntegration = false;
             }
             case GIT_DIR_NOT_FOUND:
@@ -408,6 +420,9 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                         notification.expire();
 
                         ApplicationManager.getApplication().invokeLater(() -> {
+                            final Project project = project();
+                            if (project == null) return;
+
                             @SuppressWarnings("DialogTitleCapitalization")
                             final FileChooserDialog fileChooser = FileChooserFactory
                                     .getInstance().createFileChooser(
@@ -455,7 +470,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                         }, ModalityState.NON_MODAL);
                     }
                 });
-                Notifications.Bus.notify(notification, project);
+                Notifications.Bus.notify(notification, project());
 
                 this.gitIntegration = false;
                 return null;
@@ -487,7 +502,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
     private void nagAboutGitIntegrationIfNeeded() {
         if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && !gitIntegration) {
             ApplicationManager.getApplication().invokeLater(() -> {
-                final VirtualFile projectBaseDir = getProjectBaseDir(project);
+                final VirtualFile projectBaseDir = getProjectBaseDir(project());
                 if (!gitIntegration && projectBaseDir != null && projectBaseDir.findChild(".git") != null) {
                     Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
                             "Git repository detected",
@@ -501,7 +516,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                                 }
                                 n.expire();
                                 setNaggedAbout(getNaggedAbout() | TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION);
-                            }), project);
+                            }), project());
                 }
             }, ModalityState.NON_MODAL);
         }
@@ -538,9 +553,18 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         }
     }
 
-    public TimeTrackerComponent(Project project) {
-        this.project = project;
+    public TimeTrackerComponent(@Nullable Project project) {
+        this._project = project;
         if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "Instantiated "+this);
+    }
+
+    @Nullable
+    private Project project() {
+        final Project project = _project;
+        if (project == null || project.isDisposed()) {
+            return null;
+        }
+        return project;
     }
 
     private void repaintWidget(boolean relayout) {
@@ -616,6 +640,10 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         if (windowManager == null) {
             return null;
         }
+        final Project project = project();
+        if (project == null) {
+            return null;
+        }
         return windowManager.getStatusBar(project);
     }
 
@@ -689,7 +717,7 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
 
     @Override
     public String toString() {
-        return "TTC("+project+")@"+System.identityHashCode(this);
+        return "TTC("+_project+")@"+System.identityHashCode(this);
     }
 
     @Override
@@ -708,7 +736,11 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         return (ms + 500L) / 1000L;
     }
 
-    public static VirtualFile getProjectBaseDir(Project project) {
+    @Nullable
+    public static VirtualFile getProjectBaseDir(@Nullable Project project) {
+        if (project == null) {
+            return null;
+        }
         @SystemIndependent final String basePath = project.getBasePath();
         if (basePath == null) {
             return null;
