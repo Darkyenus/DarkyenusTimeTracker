@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 @State(name="DarkyenusTimeTrackerDefaults", storages = {@Storage("darkyenus-time-tracker-defaults.xml")})
 public class TimeTrackerDefaultSettingsComponent implements BaseComponent, PersistentStateComponent<TimeTrackerPersistentState> {
 
-	private TimeTrackerPersistentState defaultState = new TimeTrackerPersistentState();
+	private final TimeTrackerPersistentState defaultState = new TimeTrackerPersistentState();
 
 	@NotNull
 	@Override
@@ -19,9 +19,13 @@ public class TimeTrackerDefaultSettingsComponent implements BaseComponent, Persi
 		return defaultState;
 	}
 
+	public void setDefaultsFrom(@NotNull TimeTrackerPersistentState templateState) {
+		this.defaultState.setDefaultsFrom(templateState);
+	}
+
 	@Override
 	public void loadState(@NotNull TimeTrackerPersistentState state) {
-		this.defaultState = state;
+		this.defaultState.setDefaultsFrom(state);
 	}
 
 	@NotNull

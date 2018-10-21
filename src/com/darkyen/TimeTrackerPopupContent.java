@@ -164,14 +164,14 @@ final class TimeTrackerPopupContent extends Box {
 
 			final JButton loadDefaults = new JButton("Reset to defaults");
 			loadDefaults.addActionListener(e1 -> {
-				component.loadState(TimeTrackerDefaultSettingsComponent.instance().getState());
+				component.loadStateDefaults(TimeTrackerDefaultSettingsComponent.instance().getState());
 				popup.cancel();
 			});
 			otherButtons.add(loadDefaults);
 
 			final JButton saveDefaults = new JButton("Save as defaults");
 			saveDefaults.addActionListener(e1 -> {
-				TimeTrackerDefaultSettingsComponent.instance().loadState(component.getState());
+				TimeTrackerDefaultSettingsComponent.instance().setDefaultsFrom(component.getState());
 				popup.cancel();
 			});
 			otherButtons.add(saveDefaults);

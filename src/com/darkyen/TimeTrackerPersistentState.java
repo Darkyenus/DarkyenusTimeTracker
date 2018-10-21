@@ -25,6 +25,17 @@ public final class TimeTrackerPersistentState {
     public String gitRepoPath = DEFAULT_GIT_REPO_PATH;
     public String gitHooksPath = DEFAULT_GIT_HOOKS_PATH;
 
+    public void setDefaultsFrom(final TimeTrackerPersistentState state) {
+        this.autoStart = state.autoStart;
+        this.idleThresholdMs = state.idleThresholdMs;
+        this.autoCountIdleSeconds = state.autoCountIdleSeconds;
+        this.stopWhenIdleRatherThanPausing = state.stopWhenIdleRatherThanPausing;
+        this.pauseOtherTrackerInstances = state.pauseOtherTrackerInstances;
+
+        this.ideTimePattern = state.ideTimePattern;
+        this.gitTimePattern = state.gitTimePattern;
+    }
+
     public static transient long NAGGED_ABOUT_GIT_INTEGRATION = 1;
     public static transient String DEFAULT_IDE_TIME_PATTERN = "{{lh \"hr\"s}} {{lm \"min\"}} {{ts \"sec\"}}";
     public static transient String DEFAULT_GIT_TIME_PATTERN = "Took {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}";

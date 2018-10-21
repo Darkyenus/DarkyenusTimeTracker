@@ -585,6 +585,12 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
         loadState(TimeTrackerDefaultSettingsComponent.instance().getState());
     }
 
+    public void loadStateDefaults(@NotNull TimeTrackerPersistentState defaults) {
+        final TimeTrackerPersistentState modifiedState = getState();
+        modifiedState.setDefaultsFrom(defaults);
+        loadState(modifiedState);
+    }
+
     @Override
     public void loadState(@NotNull TimeTrackerPersistentState state) {
         if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "loadState() "+this);
