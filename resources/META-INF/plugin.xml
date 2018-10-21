@@ -2,7 +2,7 @@
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyen's Time Tracker</name>
     <version>1.4.3</version>
-    <vendor email="darkyenus@gmail.com" url="http://darkyenus.github.io">Jan Polák</vendor>
+    <vendor email="darkyenus@gmail.com" url="https://darkyen.com">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
     <description><![CDATA[
@@ -19,7 +19,8 @@
     <change-notes><![CDATA[
       <h3>Version 1.4.3</h3>
       <ul>
-        <li>Fixed "Reset to defaults" and "Save as defaults" incorrectly saving tracked time as well.</li>
+        <li>Fixed "Reset to defaults" and "Save as defaults" incorrectly saving tracked time as well</li>
+        <li>Make selecting .git and .git/hooks directory slightly more user friendly</li>
       </ul>
       <h3>Version 1.4.2</h3>
       <ul>

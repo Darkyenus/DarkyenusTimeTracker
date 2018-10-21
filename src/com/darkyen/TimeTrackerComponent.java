@@ -24,6 +24,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.util.concurrency.EdtExecutorService;
@@ -35,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.SystemIndependent;
 
 import java.awt.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -423,14 +425,22 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                             final Project project = project();
                             if (project == null) return;
 
+                            final FileChooserDescriptor fileChooserDescriptor = new FileChooserDescriptor(false, true, false, false, false, false)
+                                    .withShowHiddenFiles(true)
+                                    .withHideIgnored(false)
+                                    .withRoots(getProjectBaseDir(project))
+                                    .withTitle(result == GIT_DIR_NOT_FOUND ? "Select .git Directory" : "Select .git/hooks Directory");
+                            try {
+                                fileChooserDescriptor.setForcedToUseIdeaFileChooser(true); // Mac one has problems with hidden files, making the whole thing pointless
+                                if (result == GIT_HOOKS_DIR_NOT_FOUND) {
+                                    fileChooserDescriptor.withRoots(VirtualFileManager.getInstance().findFileByUrl(projectBase.resolve(gitRepoPath).toUri().toURL().toString()));
+                                }
+                            } catch (Throwable t) {
+                                LOG.log(Level.WARNING, "Failed to fully configure FCD for "+result, t);
+                            }
+
                             @SuppressWarnings("DialogTitleCapitalization")
-                            final FileChooserDialog fileChooser = FileChooserFactory
-                                    .getInstance().createFileChooser(
-                                            new FileChooserDescriptor(false, true, false, false, false, false)
-                                                    .withShowHiddenFiles(true)
-                                                    .withRoots(getProjectBaseDir(project))
-                                                    .withHideIgnored(false)
-                                                    .withTitle(result == GIT_DIR_NOT_FOUND ? "Select .git Directory" : "Select .git/hooks Directory"), project, null);
+                            final FileChooserDialog fileChooser = FileChooserFactory.getInstance().createFileChooser(fileChooserDescriptor, project, null);
 
                             final VirtualFile[] chosen = fileChooser.choose(project);
                             Path chosenPath = null;
@@ -440,6 +450,15 @@ public final class TimeTrackerComponent implements ProjectComponent, PersistentS
                             if (chosenPath == null) {
                                 LOG.log(Level.INFO, "No valid path chosen " + Arrays.toString(chosen));
                                 return;
+                            }
+
+                            // Users (I) often select parent directory instead of .git directory, detect that and fix that.
+                            if (result == GIT_DIR_NOT_FOUND && !chosenPath.getFileName().toString().equalsIgnoreCase(".git")) {
+                                // User has not chosen a .git directory, but maybe the parent directory? Common mistake.
+                                final Path possiblyGitDirectory = chosenPath.resolve(".git");
+                                if (Files.isDirectory(possiblyGitDirectory)) {
+                                    chosenPath = possiblyGitDirectory;
+                                }
                             }
 
                             synchronized (TimeTrackerComponent.this) {
