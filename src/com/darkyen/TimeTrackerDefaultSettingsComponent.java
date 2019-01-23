@@ -44,4 +44,14 @@ public class TimeTrackerDefaultSettingsComponent implements BaseComponent, Persi
 		}
 		return component;
 	}
+
+	// Empty defaults for backwards compatibility
+	@Override
+	public void initComponent() {}
+
+	@Override
+	public void disposeComponent() {}
+
+	@Override
+	public void noStateLoaded() {}
 }
