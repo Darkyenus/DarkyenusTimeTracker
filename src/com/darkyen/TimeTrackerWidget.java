@@ -13,7 +13,6 @@ import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -28,11 +27,12 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     public static final String ID = "com.darkyen.DarkyenusTimeTracker";
 
-    private final TimeTrackerComponent component;
+    @NotNull
+    private final TimeTrackerService service;
 
-    TimeTrackerWidget(TimeTrackerComponent component) {
-        this.component = component;
-        addActionListener(e -> component.toggleRunning());
+    TimeTrackerWidget(@NotNull TimeTrackerService service) {
+        this.service = service;
+        addActionListener(e -> service.toggleRunning());
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
         setOpaque(false);
         setFocusable(false);
@@ -41,7 +41,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
-                    final TimeTrackerPopupContent content = new TimeTrackerPopupContent(component);
+                    final TimeTrackerPopupContent content = new TimeTrackerPopupContent(service);
 
                     final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(content, null);
                     popupBuilder.setCancelOnClickOutside(true);
@@ -71,7 +71,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return ID;
     }
 
-    @Nullable
+    // Kept for backwards compatibility, as the method was made optional at around version 193
+    @SuppressWarnings("UnstableApiUsage")
     @Override
     public WidgetPresentation getPresentation(@NotNull PlatformType type) {
         return null;
@@ -102,8 +103,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     @Override
     public void paintComponent(final Graphics g) {
-        final int timeToShow = component.getTotalTimeSeconds();
-        final String info = component.getIdeTimePattern().secondsToString(timeToShow);
+        final int timeToShow = service.getTotalTimeSeconds();
+        final String info = service.getIdeTimePattern().secondsToString(timeToShow);
 
         if (timeToShow != lastTimeToShow) {
             lastTimeToShow = timeToShow;
@@ -118,7 +119,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         final int yOffset = (size.height - barHeight) / 2;
         final int xOffset = insets.left;
 
-        switch (component.getStatus()) {
+        switch (service.getStatus()) {
             case RUNNING:
                 g.setColor(COLOR_ON);
                 break;
@@ -158,7 +159,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     public Dimension getPreferredSize() {
         final Font widgetFont = getWidgetFont();
         final FontMetrics fontMetrics = getFontMetrics(widgetFont);
-        final TimePattern pattern = component.getIdeTimePattern();
+        final TimePattern pattern = service.getIdeTimePattern();
         final int stringWidth;
 
         if (widgetFont.equals(getPreferredSize_lastFont) && pattern.equals(getPreferredSize_lastPattern)) {
@@ -204,7 +205,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         final Window activeWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
         // Un-idle this only if our ide window is active
         if (ApplicationManager.getApplication().isActive() && ultimateParent == activeWindow) {
-            component.notifyUserNotIdle();
+            service.notifyUserNotIdle();
         }
     }
 }

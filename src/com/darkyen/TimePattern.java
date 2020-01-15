@@ -3,7 +3,8 @@ package com.darkyen;
 import java.util.*;
 import java.util.logging.Logger;
 
-import static com.darkyen.TimeTrackerComponent.msToS;
+import static com.darkyen.Util.msToS;
+
 
 /**
  *

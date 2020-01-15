@@ -11,6 +11,7 @@ import com.intellij.openapi.util.io.StreamUtil;
 import com.intellij.openapi.util.registry.Registry;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.ui.JBUI;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -28,7 +29,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.darkyen.TimeTrackerComponent.msToS;
+import static com.darkyen.Util.msToS;
 
 /**
  *
@@ -39,7 +40,7 @@ final class TimeTrackerPopupContent extends Box {
 
 	JBPopup popup;
 
-	TimeTrackerPopupContent(TimeTrackerComponent component) {
+	TimeTrackerPopupContent(@NotNull TimeTrackerService service) {
 		super(BoxLayout.Y_AXIS);
 
 		final int insetLR = 10;
@@ -55,25 +56,25 @@ final class TimeTrackerPopupContent extends Box {
 					"Stop after (sec):"
 			};
 			final ComboBox<String> modeComboBox = new ComboBox<>(modes);
-			modeComboBox.setSelectedIndex(component.isStopWhenIdleRatherThanPausing() ? 1 : 0);
+			modeComboBox.setSelectedIndex(service.isStopWhenIdleRatherThanPausing() ? 1 : 0);
 			modeComboBox.addActionListener(e -> {
-				component.setStopWhenIdleRatherThanPausing(modeComboBox.getSelectedIndex() == 1);
+				service.setStopWhenIdleRatherThanPausing(modeComboBox.getSelectedIndex() == 1);
 			});
 			modeComboBox.setAlignmentX(1f);
 			optionsPanel.add(modeComboBox);
 
-			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(msToS(component.getIdleThresholdMs()), 0, Integer.MAX_VALUE, 10));
+			final JSpinner idleThresholdSpinner = new JSpinner(new SpinnerNumberModel(msToS(service.getIdleThresholdMs()), 0, Integer.MAX_VALUE, 10));
 			optionsPanel.add(idleThresholdSpinner);
 			idleThresholdSpinner.addChangeListener(ce ->
-					component.setIdleThresholdMs(((Number) idleThresholdSpinner.getValue()).longValue() * 1000));
+					service.setIdleThresholdMs(((Number) idleThresholdSpinner.getValue()).longValue() * 1000));
 		}
 
 		{
 			optionsPanel.add(new JLabel("Auto-count pauses shorter than (sec):", JLabel.RIGHT));
-			final JSpinner autoCountSpinner = new JSpinner(new SpinnerNumberModel(component.getAutoCountIdleSeconds(), 0, Integer.MAX_VALUE, 10));
+			final JSpinner autoCountSpinner = new JSpinner(new SpinnerNumberModel(service.getAutoCountIdleSeconds(), 0, Integer.MAX_VALUE, 10));
 			optionsPanel.add(autoCountSpinner);
 			autoCountSpinner.addChangeListener(ce ->
-					component.setAutoCountIdleSeconds(((Number) autoCountSpinner.getValue()).intValue()));
+					service.setAutoCountIdleSeconds(((Number) autoCountSpinner.getValue()).intValue()));
 		}
 
 		{
@@ -81,34 +82,34 @@ final class TimeTrackerPopupContent extends Box {
 			final JCheckBox autoStartCheckBox = new JCheckBox();
 			autoStartCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
 			autoStartCheckBox.setVerticalAlignment(SwingConstants.CENTER);
-			autoStartCheckBox.setSelected(component.isAutoStart());
+			autoStartCheckBox.setSelected(service.isAutoStart());
 			optionsPanel.add(autoStartCheckBox);
 			autoStartCheckBox.addActionListener(al -> {
-				component.setAutoStart(autoStartCheckBox.isSelected());
+				service.setAutoStart(autoStartCheckBox.isSelected());
 			});
 		}
 
 		{
 			optionsPanel.add(new JLabel("Pause other IDE windows when this one activates:", JLabel.RIGHT));
 			final JCheckBox autoPauseCheckBox = new JCheckBox();
-			autoPauseCheckBox.setSelected(component.isPauseOtherTrackerInstances());
+			autoPauseCheckBox.setSelected(service.isPauseOtherTrackerInstances());
 			autoPauseCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
 			autoPauseCheckBox.setVerticalAlignment(SwingConstants.CENTER);
 			optionsPanel.add(autoPauseCheckBox);
 			autoPauseCheckBox.addActionListener(al -> {
-				component.setPauseOtherTrackerInstances(autoPauseCheckBox.isSelected());
+				service.setPauseOtherTrackerInstances(autoPauseCheckBox.isSelected());
 			});
 		}
 
 		{
 			optionsPanel.add(new JLabel("Inject work time into Git commits:", JLabel.RIGHT));
 			final JCheckBox gitIntegrationCheckBox = new JCheckBox();
-			gitIntegrationCheckBox.setSelected(component.isGitIntegration());
+			gitIntegrationCheckBox.setSelected(service.isGitIntegration());
 			gitIntegrationCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
 			gitIntegrationCheckBox.setVerticalAlignment(SwingConstants.CENTER);
 			optionsPanel.add(gitIntegrationCheckBox);
 			gitIntegrationCheckBox.addActionListener(al -> {
-				final Boolean result = component.setGitIntegration(gitIntegrationCheckBox.isSelected());
+				final Boolean result = service.setGitIntegration(gitIntegrationCheckBox.isSelected());
 				if (result == null) {
 					popup.cancel();
 				} else {
@@ -120,14 +121,14 @@ final class TimeTrackerPopupContent extends Box {
 		{
 			optionsPanel.add(new JLabel("Display time format:", JLabel.RIGHT));
 			final TimePatternTextField patternField = new TimePatternTextField(
-					component.getIdeTimePattern().source, component::setIdeTimePattern);
+					service.getIdeTimePattern().source, service::setIdeTimePattern);
 			optionsPanel.add(patternField);
 		}
 
 		{
 			optionsPanel.add(new JLabel("Git time format:", JLabel.RIGHT));
 			final TimePatternTextField patternField = new TimePatternTextField(
-					component.getGitTimePattern().source, component::setGitTimePattern);
+					service.getGitTimePattern().source, service::setGitTimePattern);
 			optionsPanel.add(patternField);
 		}
 
@@ -136,7 +137,7 @@ final class TimeTrackerPopupContent extends Box {
 
 			final JButton timeResetButton = new JButton("Reset time");
 			timeResetButton.setToolTipText("Completely reset tracked time, including git time, if enabled");
-			timeResetButton.addActionListener(e1 -> component.addOrResetTotalTimeMs(TimeTrackerComponent.RESET_TIME_TO_ZERO));
+			timeResetButton.addActionListener(e1 -> service.addOrResetTotalTimeMs(TimeTrackerService.RESET_TIME_TO_ZERO));
 			timeButtons.add(timeResetButton);
 			timeButtons.add(Box.createHorizontalGlue());
 
@@ -148,7 +149,7 @@ final class TimeTrackerPopupContent extends Box {
 					final int timeChange = timesSec[i];
 					final JButton timeButton = new JButton(labels[i]);
 					timeButton.addActionListener(e1 -> {
-						component.addOrResetTotalTimeMs(timeChange * 1000);
+						service.addOrResetTotalTimeMs(timeChange * 1000);
 					});
 					timeButtons.add(timeButton);
 				}
@@ -164,14 +165,14 @@ final class TimeTrackerPopupContent extends Box {
 
 			final JButton loadDefaults = new JButton("Reset to defaults");
 			loadDefaults.addActionListener(e1 -> {
-				component.loadStateDefaults(TimeTrackerDefaultSettingsComponent.instance().getState());
+				service.loadStateDefaults(DefaultSettingsService.getDefaultState());
 				popup.cancel();
 			});
 			otherButtons.add(loadDefaults);
 
 			final JButton saveDefaults = new JButton("Save as defaults");
 			saveDefaults.addActionListener(e1 -> {
-				TimeTrackerDefaultSettingsComponent.instance().setDefaultsFrom(component.getState());
+				DefaultSettingsService.setDefaultState(service.getState());
 				popup.cancel();
 			});
 			otherButtons.add(saveDefaults);
@@ -182,7 +183,8 @@ final class TimeTrackerPopupContent extends Box {
 
 		private final JTextField patternField = new JTextField();
 		private final JButton errorButton = new JButton(AllIcons.General.ExclMark);
-		private final JButton infoButton = new JButton(AllIcons.General.Help_small);
+		@SuppressWarnings("FieldCanBeLocal")
+		private final JButton infoButton = new JButton(AllIcons.General.ContextHelp);
 
 		private int shownErrorIndex = -1;
 		private final ArrayList<TimePattern.ParseError> errors = new ArrayList<>();

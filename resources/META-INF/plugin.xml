@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyen's Time Tracker</name>
-    <version>1.4.3</version>
+    <version>1.4.4</version>
     <vendor email="darkyenus@gmail.com" url="https://darkyen.com">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
@@ -17,6 +17,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+      <h3>Version 1.4.4</h3>
+      <ul>
+        <li>Compatibility with future IntelliJ versions (2020)</li>
+      </ul>
       <h3>Version 1.4.3</h3>
       <ul>
         <li>Fixed "Reset to defaults" and "Save as defaults" incorrectly saving tracked time as well</li>
@@ -93,29 +97,16 @@
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="145.0"/>
+    <idea-version since-build="182.2757.3"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here -->
+        <statusBarWidgetProvider implementation="com.darkyen.TimeTrackerWidgetProvider"/>
+        <projectService serviceImplementation="com.darkyen.TimeTrackerService"/>
+        <applicationService serviceImplementation="com.darkyen.DefaultSettingsService"/>
     </extensions>
 
-    <actions>
-        <!-- Add your actions here -->
-    </actions>
-
-    <project-components>
-        <component>
-            <implementation-class>com.darkyen.TimeTrackerComponent</implementation-class>
-        </component>
-    </project-components>
-
-    <application-components>
-        <component>
-            <implementation-class>com.darkyen.TimeTrackerDefaultSettingsComponent</implementation-class>
-        </component>
-    </application-components>
 </idea-plugin>

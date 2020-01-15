@@ -80,7 +80,7 @@ final class GitIntegration {
 				}
 			}
 
-			final long newSeconds = versionSeconds == TimeTrackerComponent.RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
+			final long newSeconds = versionSeconds == TimeTrackerService.RESET_TIME_TO_ZERO ? 0 : Math.max(0, existingSeconds + versionSeconds);
 
 			try (final BufferedWriter out = Files.newBufferedWriter(timeFile, StandardCharsets.UTF_8)) {
 				out.write(Long.toString(newSeconds));
@@ -145,11 +145,8 @@ final class GitIntegration {
 				if (enable) {
 					// Create new hook
 					fillWithHookContent(timeFile, hook);
-					return SetupCommitHookResult.SUCCESS;
-				} else {
-					// All good, no hook is present
-					return SetupCommitHookResult.SUCCESS;
-				}
+				}// else: All good, no hook is present
+				return SetupCommitHookResult.SUCCESS;
 			} else {
 				// Is it our hook?
 				final String content = new String(Files.readAllBytes(hook), StandardCharsets.UTF_8);
@@ -158,7 +155,6 @@ final class GitIntegration {
 				if (enable) {
 					if (isRecentTrackerHook) {
 						// All good, recent hook is present
-						// noinspection UnnecessaryReturnStatement
 						return SetupCommitHookResult.SUCCESS;
 					} else if (isTimeTrackerHook) {
 						// There is our hook, but old, replace
@@ -172,11 +168,8 @@ final class GitIntegration {
 					if (isTimeTrackerHook) {
 						// We are disabling and this is our hook, delete
 						Files.deleteIfExists(hook);
-						return SetupCommitHookResult.SUCCESS;
-					} else {
-						// We are disabling and this is not our hook, leave it alone
-						return SetupCommitHookResult.SUCCESS;
-					}
+					}// else: Not our hook, leave it alone
+					return SetupCommitHookResult.SUCCESS;
 				}
 			}
 		} catch (IOException ex) {
