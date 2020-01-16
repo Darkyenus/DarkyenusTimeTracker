@@ -71,13 +71,6 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return ID;
     }
 
-    // Kept for backwards compatibility, as the method was made optional at around version 193
-    @SuppressWarnings("UnstableApiUsage")
-    @Override
-    public WidgetPresentation getPresentation(@NotNull PlatformType type) {
-        return null;
-    }
-
     @Override
     public void install(@NotNull StatusBar statusBar) {
         Toolkit.getDefaultToolkit().addAWTEventListener(this,

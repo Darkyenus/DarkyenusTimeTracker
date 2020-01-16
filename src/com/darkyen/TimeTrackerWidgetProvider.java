@@ -1,5 +1,6 @@
 package com.darkyen;
 
+import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.openapi.wm.StatusBarWidgetProvider;
@@ -12,9 +13,9 @@ public class TimeTrackerWidgetProvider implements StatusBarWidgetProvider {
 	@Nullable
 	@Override
 	public StatusBarWidget getWidget(@NotNull Project project) {
-		final TimeTrackerService component = project.getService(TimeTrackerService.class);
-		if (component != null) {
-			return component.widget();
+		final TimeTrackerService service = ServiceManager.getService(project, TimeTrackerService.class);
+		if (service != null) {
+			return service.widget();
 		}
 		return null;
 	}
