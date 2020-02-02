@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Identifier, do not change if modifying:
 #DarkyenusTimeTrackerHookScript00006
