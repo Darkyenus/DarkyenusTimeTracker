@@ -10,6 +10,7 @@ import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
+import com.intellij.util.Consumer;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +33,6 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
     TimeTrackerWidget(@NotNull TimeTrackerService service) {
         this.service = service;
-        addActionListener(e -> service.toggleRunning());
         setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
         setOpaque(false);
         setFocusable(false);
@@ -40,7 +40,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON3) {
+                if (e.getButton() == MouseEvent.BUTTON2 || (e.isControlDown() && e.getButton() == MouseEvent.BUTTON1)) {
                     final TimeTrackerPopupContent content = new TimeTrackerPopupContent(service);
 
                     final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(content, null);
@@ -60,6 +60,8 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                     // Not sure if needed, but sometimes the popup is not clickable for some mysterious reason
                     // and it stopped happening when this was added
                     content.requestFocus();
+                } else {
+                    service.toggleRunning();
                 }
             }
         });
@@ -71,11 +73,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return ID;
     }
 
-    // Kept for backwards compatibility, as the method was made optional at around version 193
-    @SuppressWarnings("UnstableApiUsage")
     @Override
-    public WidgetPresentation getPresentation(@NotNull PlatformType type) {
-        return null;
+    public WidgetPresentation getPresentation() {
+        return new WidgetPresentation() {
+            @Override
+            public String getTooltipText() {
+                return "Darkyen's Time Tracker";
+            }
+            @Override
+            public Consumer<MouseEvent> getClickConsumer() {
+                return null;
+            }
+        };
     }
 
     @Override
@@ -108,7 +117,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
         if (timeToShow != lastTimeToShow) {
             lastTimeToShow = timeToShow;
-            setToolTipText(FULL_TIME_FORMATTING.secondsToString(timeToShow)+"\nRight click to open settings.");
+            setToolTipText("<html>" + FULL_TIME_FORMATTING.secondsToString(timeToShow)+"<br/>Middle click or Ctrl + Left click to open settings</html>");
         }
 
         final Dimension size = getSize();

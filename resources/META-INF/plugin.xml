@@ -11,7 +11,7 @@
       Pauses the timer automatically when idle (after two minutes of inactivity by default).
       Time is saved in IDE's workspace files, does not clutter project's directory.
       <br>
-      Right click timer widget for options.
+      Middle click or Ctrl + Left click on the timer widget opens options.
       <br>
       Optional git integration, injects the time it took to create the commit into the commit message.
     ]]></description>
