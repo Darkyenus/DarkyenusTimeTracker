@@ -1,37 +1,38 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyen's Time Tracker</name>
-    <version>1.4.5</version>
+    <version>1.4.6</version>
     <vendor email="darkyenus@gmail.com" url="https://darkyen.com">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
     <description><![CDATA[
-      Track the time spent on a project.<br>
-      Adds a single status bar widget. Click or type to start counting, click again to stop.
-      Pauses the timer automatically when idle (after two minutes of inactivity by default).
-      Time is saved in IDE's workspace files, does not clutter project's directory.
-      <br>
-      Right click timer widget for options.
-      <br>
-      Optional git integration, injects the time it took to create the commit into the commit message.
+      <p>Track the time spent on a project through a status bar widget.</p>
+
+      <ul>
+      <li>Click or type to start counting, click again to stop</li>
+      <li>Pauses the timer automatically when idle (after two minutes of inactivity by default)</li>
+      <li>Time is saved in IDE's workspace files, does not clutter project's directory</li>
+      <li>Right click timer widget for options</li>
+      <li>Optional git integration, injects the time it took to create the commit into the commit message</li>
+      </ul>
     ]]></description>
 
     <change-notes><![CDATA[
       <ul>
+        <li>Updated for IntelliJ Platform 2020.1</li>
         <li></li>
       </ul>
     ]]>
     </change-notes>
 
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="193.5662.53"/>
+    <!-- http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html -->
+    <idea-version since-build="201.6251.9"/>
 
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
-         on how to target different products -->
+    <!-- http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <statusBarWidgetProvider implementation="com.darkyen.TimeTrackerWidgetProvider"/>
+        <statusBarWidgetFactory id="com.darkyen.DarkyenusTimeTracker" implementation="com.darkyen.TimeTrackerWidgetFactory" order="before memoryUsageWidget"/>
         <projectService serviceImplementation="com.darkyen.TimeTrackerService"/>
         <applicationService serviceImplementation="com.darkyen.DefaultSettingsService"/>
     </extensions>

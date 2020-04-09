@@ -21,10 +21,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 /**
+ * The custom widget that is the main UI of the plugin.
  *
+ * NOTES:
+ * - Not implementing getPresentation(), because it is not used for CustomStatusBarWidgets.
+ * - AWTEventListener is for inactivity listening
  */
 public final class TimeTrackerWidget extends JButton implements CustomStatusBarWidget, AWTEventListener {
 
+    // Synchronized with xml
     public static final String ID = "com.darkyen.DarkyenusTimeTracker";
 
     @NotNull
@@ -81,7 +86,6 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         );
     }
 
-
     @Override
     public void dispose() {
         Toolkit.getDefaultToolkit().removeAWTEventListener(this);
@@ -101,7 +105,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
 
         if (timeToShow != lastTimeToShow) {
             lastTimeToShow = timeToShow;
-            setToolTipText(FULL_TIME_FORMATTING.secondsToString(timeToShow)+"\nRight click to open settings.");
+            setToolTipText("<html>"+FULL_TIME_FORMATTING.secondsToString(timeToShow)+"<br/>Right click to open settings.</html>");
         }
 
         final Dimension size = getSize();
@@ -192,6 +196,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         return getPreferredSize();
     }
 
+    /** Inactivity listening. */
     @Override
     public void eventDispatched(AWTEvent event) {
         final Component ultimateParent = UIUtil.findUltimateParent(this);
