@@ -9,17 +9,17 @@
       <p>Track the time spent on a project through a status bar widget.</p>
 
       <ul>
-      <li>Click or type to start counting, click again to stop</li>
+      <li>Click the widget or start typing to start counting</li>
       <li>Pauses the timer automatically when idle (after two minutes of inactivity by default)</li>
+      <li>Click timer widget for options, most things can be configured</li>
+      <li><code>git</code> integration, injects the time it took to create the commit into the commit message</li>
       <li>Time is saved in IDE's workspace files, does not clutter project's directory</li>
-      <li>Right click timer widget for options</li>
-      <li>Optional git integration, injects the time it took to create the commit into the commit message</li>
       </ul>
     ]]></description>
 
     <change-notes><![CDATA[
       <ul>
-        <li>Updated for IntelliJ Platform 2020.1</li>
+        <li>Updated for IntelliJ Platform 2020.1 - the UI opening the settings menu has changed, because IDE now uses right-click for something different</li>
         <li>Minor optimizations</li>
       </ul>
     ]]>

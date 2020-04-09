@@ -58,7 +58,7 @@ import static com.darkyen.Util.msToS;
  * Each operation that needs to be on a particular thread must do it itself.
  */
 @State(name="DarkyenusTimeTracker", storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE)})
-public class TimeTrackerService implements PersistentStateComponent<TimeTrackerPersistentState>, Disposable {
+public final class TimeTrackerService implements PersistentStateComponent<TimeTrackerPersistentState>, Disposable {
 
 	private static final Logger LOG = Logger.getLogger(TimeTrackerService.class.getName());
 	private static final boolean DEBUG_LIFECYCLE = false;
@@ -80,10 +80,10 @@ public class TimeTrackerService implements PersistentStateComponent<TimeTrackerP
 	private TimeTrackerWidget widget;
 
 	private long totalTimeMs = 0;
-	private TimeTrackingStatus status = TimeTrackingStatus.STOPPED;
+	private volatile TimeTrackingStatus status = TimeTrackingStatus.STOPPED;
 	private long statusStartedMs = System.currentTimeMillis();
 	private long lastTickMs = System.currentTimeMillis();
-	private long lastActivityMs = System.currentTimeMillis();
+	private volatile long lastActivityMs = System.currentTimeMillis();
 
 	private boolean autoStart;
 	private long idleThresholdMs;
@@ -211,6 +211,7 @@ public class TimeTrackerService implements PersistentStateComponent<TimeTrackerP
 
 		final long now = System.currentTimeMillis();
 		final long sinceLastTickMs = now - lastTickMs;
+		final long lastActivityMs = this.lastActivityMs;
 		final long sinceLastActivityMs = now - lastActivityMs;
 
 		if (sinceLastTickMs > TICK_JUMP_DETECTION_THRESHOLD_MS) {
@@ -668,11 +669,15 @@ public class TimeTrackerService implements PersistentStateComponent<TimeTrackerP
 	}
 
 	/** User did something, this resets the idle timer and restarts counting, if applicable. */
-	public synchronized void notifyUserNotIdle() {
+	public void notifyUserNotIdle() {
 		final long now = System.currentTimeMillis();
 		this.lastActivityMs = now;
 		if (status == TimeTrackingStatus.IDLE) {
-			setStatus(TimeTrackingStatus.RUNNING, now);
+			synchronized (this) {
+				if (status == TimeTrackingStatus.IDLE) {
+					setStatus(TimeTrackingStatus.RUNNING, now);
+				}
+			}
 		}
 	}
 

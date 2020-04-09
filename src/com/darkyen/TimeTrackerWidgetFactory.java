@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 
 /** Provides the time tracker widget. */
-public class TimeTrackerWidgetFactory implements StatusBarWidgetFactory {
+public final class TimeTrackerWidgetFactory implements StatusBarWidgetFactory {
 
 	@NotNull
 	@Override
@@ -36,7 +36,7 @@ public class TimeTrackerWidgetFactory implements StatusBarWidgetFactory {
 
 	@Override
 	public void disposeWidget(@NotNull StatusBarWidget widget) {
-		// Not disposed, because the widget is managed by the service
+		// Nothing to dispose
 	}
 
 	@Override
