@@ -1,9 +1,11 @@
-#!/bin/bash
+#!/bin/sh
 
-# Identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00006
+# Darkyen's Time Tracker IntelliJ IDEA plugin time injection script
+# Copyright 2020 Jan Polák
+# You may modify this file, but the next version of the plugin may replace it.
 
-# Script (can be modified, but may be overwritten if new plugin version is installed):
+# Auto-update version identifier, do not change if modifying:
+#DarkyenusTimeTrackerHookScript00007
 
 # When this substring appears in the commit message (placed there by a template),
 # it will be replaced by the formatted duration.
@@ -11,88 +13,78 @@
 # If you modify this string, DO NOT USE /SLASHES/ or other characters that "sed" command interprets!
 TIME_PLACEHOLDER="<#DTT#>"
 
-if [ "$2" = "merge" ] || [ "$2" = "squash" ]
-then
-	echo "Not injecting time into $2 commit"
+finish() {
+	echo "$1"
 	exit 0
+}
+
+fail() {
+	echo "$1"
+	exit 1
+}
+
+if [ "$2" = "merge" ] || [ "$2" = "squash" ]; then
+	finish "Not injecting time into $2 commit"
 fi
 
 # Do not append time if the commit message is empty, because such commit will not happen
-COMMIT_MESSAGE_LINES=$(cat "$1" | sed -e '/^#.*$/ d' -e '/^[[:space:]]*$/ d' | wc -l)
-if [ "$2" = "message" ] && (($COMMIT_MESSAGE_LINES == 0))
-then
-	echo "Not injecting time into cancelled commit"
-	exit 0
+# (sed removes comments, grep fails on any non-space char)
+if [ "$2" = "message" ] && sed -e '/^#.*$/ d' < "$1" | grep -q -v "[^[:space:]]"; then
+	finish "Not injecting time into cancelled commit"
 fi
+
+RELATIVE_DTT_TIME_PATH="<<<<RELATIVE_DTT_TIME_PATH_REPLACED_BY_PLUGIN_PLACEHOLDER>>>>"
+DTT_TIME="$(dirname "$0")/$RELATIVE_DTT_TIME_PATH" || fail "Failed to construct path to time file ($?)"
+
+if [ ! -e "$DTT_TIME" ]; then
+	finish "No timing data found"
+fi
+
+# Load the file into array by lines
+read_time() {
+	IFS="
+"
+	read -r TIME_TOTAL_SEC || fail "Corrupted time file (line 1, $?)"
+	read -r TIME_FORMATTED || fail "Corrupted time file (line 2, $?)"
+	read -r TIME_FORMATTED_ZERO || fail "Corrupted time file (line 3, $?)"
+}
+
+read_time < "$DTT_TIME" || fail "Failed to read time file ($?)"
 
 # Do not append time to amend commits - those already may have the time appended.
 # The only way to detect amend commit is the check whether or not the first line of commit message is empty.
 FIRST_COMMIT_LINE=$(head -n 1 "$1")
-if [ "$2" == "commit" ] && [ -n "$FIRST_COMMIT_LINE" ]
-then
-	echo "Not injecting time into amend commit"
-	exit 0
+if [ "$2" = "commit" ] && [ -n "$FIRST_COMMIT_LINE" ]; then
+	if [ "$TIME_TOTAL_SEC" -gt 0 ]; then
+		printf "\n# Commit time for manual adjustment:\n# %s" "$TIME_FORMATTED" >> "$1" || fail "Failed to append formatted time into amend commit ($?)"
+		finish "Not injecting time into amend commit. If you have modified the time, reset it manually"
+	else
+		finish "Amend commit took no time, message unmodified"
+	fi
 fi
-
-RELATIVE_DTT_TIME_PATH="<<<<RELATIVE_DTT_TIME_PATH_REPLACED_BY_PLUGIN_PLACEHOLDER>>>>"
-DTT_TIME="$(dirname "$0")/$RELATIVE_DTT_TIME_PATH"
-
-if [ ! -e "$DTT_TIME" ]
-then
-	echo "No timing data found"
-	exit 0
-fi
-
-# Load the file into array by lines (http://mywiki.wooledge.org/BashFAQ/005)
-unset lines
-while IFS= read -r; do
-    lines+=("$REPLY")
-done <${DTT_TIME}
-[[ $REPLY ]] && lines+=("$REPLY")
-
-TIME_TOTAL_SEC="${lines[0]}"
-TIME_FORMATTED="${lines[1]}"
-TIME_FORMATTED_ZERO="${lines[2]}"
 
 # Inject the time into the message
 RESULT_MESSAGE=""
-if $(grep -q "$TIME_PLACEHOLDER" "$1")
-then
+if grep -q "$TIME_PLACEHOLDER" "$1"; then
 	# Replace the TIME_PLACEHOLDER with TIME_FORMATTED
-	TIME_FORMATTED_ESCAPED="$(echo "$TIME_FORMATTED" | sed -e 's/[\/&]/\\&/g')"
+	TIME_FORMATTED_ESCAPED="$(echo "$TIME_FORMATTED" | sed -e 's/[\/&]/\\&/g')" || fail "Failed to sed-escape formatted time ($?)"
 
-	sed -i '' -e "s/${TIME_PLACEHOLDER}/${TIME_FORMATTED_ESCAPED}/" "$1"
+	sed -e "s/${TIME_PLACEHOLDER}/${TIME_FORMATTED_ESCAPED}/" < "$1" > "$1.dtt" || fail "Failed to write substitute message file ($?)"
+	cat "$1.dtt" > "$1" || fail "Failed to rewrite message ($?)"
+
 	RESULT_MESSAGE="$TIME_FORMATTED (replaced)"
 else
 	# Append TIME_FORMATTED at the end of the file
-	if (($TIME_TOTAL_SEC > 0))
-	then
-		printf "\n\n$TIME_FORMATTED" >> "$1"
+	if [ "$TIME_TOTAL_SEC" -gt 0 ]; then
+		printf "\n\n%s" "$TIME_FORMATTED" >> "$1" || fail "Failed to append formatted time ($?)"
 		RESULT_MESSAGE="$TIME_FORMATTED (appended)"
 	else
 		RESULT_MESSAGE="Commit took no time, message unmodified"
 	fi
 fi
 
-# Reset the time (there were problems with this in the past, so this is a bit of an overkill)
-NEW_DTT_TIME_CONTENT=$(printf "0\n$TIME_FORMATTED_ZERO\n$TIME_FORMATTED_ZERO\n")
-while true; do
-	echo "$NEW_DTT_TIME_CONTENT" > "$DTT_TIME"
-	ECHO_EXIT=$?
+# Reset the time (atomically, in the case that the plugin is modifying it)
+printf "0\n%s\n%s\n" "$TIME_FORMATTED_ZERO" "$TIME_FORMATTED_ZERO" > "$DTT_TIME.zero" || fail "Failed to create empty time file ($?)"
+mv -f "$DTT_TIME.zero" "$DTT_TIME" || fail "Failed to reset time file"
 
-	if [ ${ECHO_EXIT} != "0" ]; then
-		echo "Reset attempt exited with $ECHO_EXIT!"
-    fi
-
-    DTT_TIME_CONTENT=$(cat "$DTT_TIME")
-    if [ "$DTT_TIME_CONTENT" == "$NEW_DTT_TIME_CONTENT" ]; then
-        break
-    fi
-
-	# Warn and wait 1 second, then try again
-    echo "Time did not reset, trying again..."
-    sleep 1
-done
-
-echo "Time tracking: $RESULT_MESSAGE"
-exit 0
+finish "Time tracking: $RESULT_MESSAGE"
