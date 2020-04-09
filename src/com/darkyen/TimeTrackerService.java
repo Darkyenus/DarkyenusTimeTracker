@@ -117,7 +117,7 @@ public class TimeTrackerService implements PersistentStateComponent<TimeTrackerP
 	public TimeTrackerService(@NotNull Project project) {
 		if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "Instantiated "+this);
 		this._project = project;
-		Disposer.register(project, this); // Probably?
+		Disposer.register(project, this);
 
 		ALL_OPENED_TRACKERS.add(this);
 		project.getMessageBus().connect(this).subscribe(AppTopics.FILE_DOCUMENT_SYNC, new FileDocumentManagerListener() {
@@ -170,6 +170,8 @@ public class TimeTrackerService implements PersistentStateComponent<TimeTrackerP
 				});
 			}
 		}, this);
+
+		InactivityService.getInstance().initListening(project, this);
 	}
 
 	@NotNull

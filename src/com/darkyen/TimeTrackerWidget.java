@@ -1,7 +1,6 @@
 package com.darkyen;
 
 import com.intellij.ide.ui.UISettings;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ui.popup.ComponentPopupBuilder;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
@@ -16,7 +15,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.AWTEventListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -27,7 +25,7 @@ import java.awt.event.MouseEvent;
  * - Not implementing getPresentation(), because it is not used for CustomStatusBarWidgets.
  * - AWTEventListener is for inactivity listening
  */
-public final class TimeTrackerWidget extends JButton implements CustomStatusBarWidget, AWTEventListener {
+public final class TimeTrackerWidget extends JButton implements CustomStatusBarWidget {
 
     // Synchronized with xml
     public static final String ID = "com.darkyen.DarkyenusTimeTracker";
@@ -77,19 +75,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     }
 
     @Override
-    public void install(@NotNull StatusBar statusBar) {
-        Toolkit.getDefaultToolkit().addAWTEventListener(this,
-                AWTEvent.KEY_EVENT_MASK |
-                        AWTEvent.MOUSE_EVENT_MASK |
-                        AWTEvent.MOUSE_WHEEL_EVENT_MASK |
-                        AWTEvent.MOUSE_MOTION_EVENT_MASK
-        );
-    }
+    public void install(@NotNull StatusBar statusBar) {}
 
     @Override
-    public void dispose() {
-        Toolkit.getDefaultToolkit().removeAWTEventListener(this);
-    }
+    public void dispose() {}
 
     private static final Color COLOR_OFF = new JBColor(new Color(189, 0, 16), new Color(128, 0, 0));
     private static final Color COLOR_ON = new JBColor(new Color(28, 152, 19), new Color(56, 113, 41));
@@ -194,16 +183,5 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     @Override
     public Dimension getMaximumSize() {
         return getPreferredSize();
-    }
-
-    /** Inactivity listening. */
-    @Override
-    public void eventDispatched(AWTEvent event) {
-        final Component ultimateParent = UIUtil.findUltimateParent(this);
-        final Window activeWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-        // Un-idle this only if our ide window is active
-        if (ApplicationManager.getApplication().isActive() && ultimateParent == activeWindow) {
-            service.notifyUserNotIdle();
-        }
     }
 }

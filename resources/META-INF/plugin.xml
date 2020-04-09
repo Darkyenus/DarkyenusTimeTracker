@@ -20,7 +20,7 @@
     <change-notes><![CDATA[
       <ul>
         <li>Updated for IntelliJ Platform 2020.1</li>
-        <li></li>
+        <li>Minor optimizations</li>
       </ul>
     ]]>
     </change-notes>
@@ -35,6 +35,7 @@
         <statusBarWidgetFactory id="com.darkyen.DarkyenusTimeTracker" implementation="com.darkyen.TimeTrackerWidgetFactory" order="before memoryUsageWidget"/>
         <projectService serviceImplementation="com.darkyen.TimeTrackerService"/>
         <applicationService serviceImplementation="com.darkyen.DefaultSettingsService"/>
+        <applicationService serviceImplementation="com.darkyen.InactivityService"/>
     </extensions>
 
 </idea-plugin>
