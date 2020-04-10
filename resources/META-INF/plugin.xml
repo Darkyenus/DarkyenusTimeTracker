@@ -1,20 +1,34 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyen's Time Tracker</name>
-    <version>1.4.6</version>
+    <version>1.5.0</version>
     <vendor email="darkyenus@gmail.com" url="https://darkyen.com">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
     <description><![CDATA[
-      <p>Track the time spent on a project through a status bar widget.</p>
+        <p>Track the time spent on a project through a lightweight status bar widget.</p>
 
-      <ul>
-      <li>Click the widget or start typing to start counting</li>
-      <li>Pauses the timer automatically when idle (after two minutes of inactivity by default)</li>
-      <li>Click timer widget for options, most things can be configured</li>
-      <li><code>git</code> integration, injects the time it took to create the commit into the commit message</li>
-      <li>Time is saved in IDE's workspace files, does not clutter project's directory</li>
-      </ul>
+        <h1>Overview</h1>
+        <ul>
+            <li>Click the widget or start typing to start counting</li>
+            <li>Pauses the timer automatically when idle</li>
+            <li>Click timer widget for options</li>
+            <li><i>Git</i> integration, inject the time it took to create the commit into the commit message</li>
+        </ul>
+
+        <h1>Features</h1>
+        <ul>
+            <li>Pause or stop after a given time of inactivity (clicking any buttons/keys or scrolling).</li>
+            <li>When returning after a period of inactivity and the counting is paused, short time durations are automatically counted in, long periods can be counted in manually through a message popup. The auto-count duration is configurable.</li>
+            <li>Start counting automatically when you type something, even when stopped. Configurable.</li>
+            <li>Pause the timer when you work on a different project within the same IDE process, useful when switching projects frequently. Configurable.</li>
+            <li>The time format on the widget is configurable using a simple but flexible template substitution. Includes clear documentation of the format, including examples of frequently requested formats.</li>
+            <li>Ability to inject the time it took to create a <i>Git</i> commit through a <i>Git commit hook</i>, using the same customizable time format. The time is appended at the end of the message, unless your template contains <code>&lt;#DTT#&gt;</code>, which is then replaced by the formatted time instead.</li>
+            <li>Reset the time (and the hidden Git counter time) manually through a button in settings or through an <a href="https://www.jetbrains.com/help/idea/customize-actions-menus-and-toolbars.html">IDE action</a>.</li>
+            <li>Manually adjust counted time.</li>
+        </ul>
+
+        <p>Time is saved in IDE's workspace files, so it does not clutter the workspace directory.</p>
     ]]></description>
 
     <change-notes><![CDATA[
