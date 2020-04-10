@@ -1,4 +1,4 @@
-# Darkyenus Time Tracker
+# Darkyen's Time Tracker
 *for IntelliJ (and other Jetbrains IDEs)*
 
 Simple and lightweight plugin for tracking of time spent on project.

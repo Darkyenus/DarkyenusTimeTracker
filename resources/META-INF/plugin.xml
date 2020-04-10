@@ -19,6 +19,7 @@
 
     <change-notes><![CDATA[
       <ul>
+        <li><b>If the widget does not appear, enable it manually by right clicking on the status bar and checking "Darkyen's Time Tracker"</b></li>
         <li>Updated for IntelliJ Platform 2020.1 - the UI opening the settings menu has changed, because IDE now uses right-click for something different</li>
         <li>Added dedicated reset-time actions. They don't have any shortcut by default, but <a href="https://www.jetbrains.com/help/idea/customize-actions-menus-and-toolbars.html">you can set that up yourself to fit your preference</a></li>
         <li>Minor optimizations</li>
