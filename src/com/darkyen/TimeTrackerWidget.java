@@ -44,8 +44,14 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
             final AWTEvent event = EventQueue.getCurrentEvent();
             if (event instanceof MouseEvent) {
                 final MouseEvent mouseEvent = (MouseEvent) event;
-                final int actionSplit = getWidth() / 2;
-                if (mouseEvent.getX() < actionSplit) {
+
+                final int width = getWidth();
+                final Insets insets = getInsets();
+                final int totalBarLength = width - insets.left - insets.right;
+                final int resumeStopWidth = resumeStopButtonWidth(totalBarLength);
+                final int actionSplit = insets.left + resumeStopWidth;
+
+                if (mouseEvent.getX() <= actionSplit) {
                     service.toggleRunning();
                 } else {
                     popupSettings();
@@ -69,6 +75,10 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 repaint();
             }
         });
+    }
+
+    private static int resumeStopButtonWidth(int widgetWidth) {
+        return widgetWidth - Math.max(widgetWidth / 5, SETTINGS_ICON.getIconWidth() / 2 * 3);
     }
 
     private void popupSettings() {
@@ -151,14 +161,14 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         if (mouseInside) {
             // Draw controls
             g.setColor(JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground());
-            int settingsLength = Math.max(totalBarLength / 5, SETTINGS_ICON.getIconWidth() / 2 * 3);
-            int runResumeLength = totalBarLength - settingsLength;
+            final int resumeStopWidth = resumeStopButtonWidth(totalBarLength);
+            final int settingsWidth = totalBarLength - resumeStopWidth;
 
-            g.drawLine(xOffset + runResumeLength, yOffset, xOffset + runResumeLength, yOffset + barHeight);
+            g.drawLine(xOffset + resumeStopWidth, yOffset, xOffset + resumeStopWidth, yOffset + barHeight);
 
             Icon firstIcon = status == RUNNING ? STOP_ICON : START_ICON;
-            firstIcon.paintIcon(this, g, xOffset + (runResumeLength - firstIcon.getIconWidth()) / 2, yOffset + (barHeight - firstIcon.getIconHeight())/2);
-            SETTINGS_ICON.paintIcon(this, g, xOffset + runResumeLength + (totalBarLength - runResumeLength - SETTINGS_ICON.getIconWidth()) / 2, yOffset + (barHeight - SETTINGS_ICON.getIconHeight())/2);
+            firstIcon.paintIcon(this, g, xOffset + (resumeStopWidth - firstIcon.getIconWidth()) / 2, yOffset + (barHeight - firstIcon.getIconHeight())/2);
+            SETTINGS_ICON.paintIcon(this, g, xOffset + resumeStopWidth + (settingsWidth - SETTINGS_ICON.getIconWidth()) / 2, yOffset + (barHeight - SETTINGS_ICON.getIconHeight())/2);
         } else {
             // Draw time text
             final Color fg = getModel().isPressed() ? UIUtil.getLabelDisabledForeground() : JBColor.foreground();
