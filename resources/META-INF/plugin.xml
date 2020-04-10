@@ -20,6 +20,7 @@
     <change-notes><![CDATA[
       <ul>
         <li>Updated for IntelliJ Platform 2020.1 - the UI opening the settings menu has changed, because IDE now uses right-click for something different</li>
+        <li>Added dedicated reset-time actions. They don't have any shortcut by default, but <a href="https://www.jetbrains.com/help/idea/customize-actions-menus-and-toolbars.html">you can set that up yourself to fit your preference</a></li>
         <li>Minor optimizations</li>
       </ul>
     ]]>
@@ -38,4 +39,10 @@
         <applicationService serviceImplementation="com.darkyen.InactivityService"/>
     </extensions>
 
+    <actions>
+        <action id="com.darkyen.actions.ResetTimeAction" class="com.darkyen.actions.ResetTimeAction"
+                text="Reset Tracked Time" description="Resets all time counters of Darkyen&#39;s Time Tracker"/>
+        <action id="com.darkyen.actions.ResetGitTimeAction" class="com.darkyen.actions.ResetGitTimeAction"
+                text="Reset Tracked Git Time" description="Reset Git time counter of Darkyen&#39;s Time tracker"/>
+    </actions>
 </idea-plugin>

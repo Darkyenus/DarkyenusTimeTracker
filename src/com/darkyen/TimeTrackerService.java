@@ -63,7 +63,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 	private static final Logger LOG = Logger.getLogger(TimeTrackerService.class.getName());
 	private static final boolean DEBUG_LIFECYCLE = false;
 
-	static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
+	public static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
 	private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
 
@@ -241,6 +241,10 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 			addTotalTimeMs(milliseconds);
 		}
 		repaintWidget(false);
+	}
+
+	public synchronized void resetGitTime() {
+		updateGitTime(RESET_TIME_TO_ZERO);
 	}
 
 	private synchronized void addTotalTimeMs(long milliseconds) {
