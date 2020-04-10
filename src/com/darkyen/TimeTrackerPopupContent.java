@@ -20,6 +20,8 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.beans.PropertyChangeEvent;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +42,12 @@ final class TimeTrackerPopupContent extends Box {
 
 	JBPopup popup;
 
-	TimeTrackerPopupContent(@NotNull TimeTrackerService service) {
+	enum PatternField {
+		WIDGET,
+		GIT
+	}
+
+	TimeTrackerPopupContent(@NotNull TimeTrackerService service, @NotNull Consumer<PatternField> patternFieldFocusListener) {
 		super(BoxLayout.Y_AXIS);
 
 		final int insetLR = 10;
@@ -121,14 +128,14 @@ final class TimeTrackerPopupContent extends Box {
 		{
 			optionsPanel.add(new JLabel("Display time format:", JLabel.RIGHT));
 			final TimePatternTextField patternField = new TimePatternTextField(
-					service.getIdeTimePattern().source, service::setIdeTimePattern);
+					service.getIdeTimePattern().source, service::setIdeTimePattern, patternFieldFocusListener, PatternField.WIDGET);
 			optionsPanel.add(patternField);
 		}
 
 		{
 			optionsPanel.add(new JLabel("Git time format:", JLabel.RIGHT));
 			final TimePatternTextField patternField = new TimePatternTextField(
-					service.getGitTimePattern().source, service::setGitTimePattern);
+					service.getGitTimePattern().source, service::setGitTimePattern, patternFieldFocusListener, PatternField.GIT);
 			optionsPanel.add(patternField);
 		}
 
@@ -189,7 +196,7 @@ final class TimeTrackerPopupContent extends Box {
 		private int shownErrorIndex = -1;
 		private final ArrayList<TimePattern.ParseError> errors = new ArrayList<>();
 
-		private Consumer<TimePattern> onChanged;
+		private final Consumer<TimePattern> onChanged;
 
 		private static final JFrame helpWindow = new JFrame("Time Format Substitution Syntax");
 
@@ -215,8 +222,6 @@ final class TimeTrackerPopupContent extends Box {
 				text = "Failed to load";
 			}
 
-
-
 			final JEditorPane area = new JEditorPane();
 			area.setEditable(false);
 			area.setContentType("text/html");
@@ -240,7 +245,7 @@ final class TimeTrackerPopupContent extends Box {
 			helpWindow.setSize(700, 500);
 		}
 
-		public TimePatternTextField(String content, Consumer<TimePattern> onChanged) {
+		public TimePatternTextField(String content, Consumer<TimePattern> onChanged, Consumer<PatternField> focusListener, PatternField patternFieldType) {
 			super(BoxLayout.X_AXIS);
 
 			add(patternField);
@@ -314,6 +319,18 @@ final class TimeTrackerPopupContent extends Box {
 				helpWindow.setLocation(location);
 				helpWindow.setVisible(true);
 			});
+
+			patternField.addFocusListener(new FocusListener() {
+				@Override
+				public void focusGained(FocusEvent e) {
+					focusListener.accept(patternFieldType);
+				}
+
+				@Override
+				public void focusLost(FocusEvent e) {
+					focusListener.accept(null);
+				}
+			});
 		}
 
 		private void refresh(String pattern) {
@@ -324,11 +341,7 @@ final class TimeTrackerPopupContent extends Box {
 			}
 
 			shownErrorIndex = -1;
-			if (errors.isEmpty()) {
-				errorButton.setVisible(false);
-			} else {
-				errorButton.setVisible(true);
-			}
+			errorButton.setVisible(!errors.isEmpty());
 		}
 	}
 

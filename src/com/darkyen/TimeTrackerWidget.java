@@ -5,6 +5,8 @@ import com.intellij.ide.ui.UISettings;
 import com.intellij.openapi.ui.popup.ComponentPopupBuilder;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.ui.popup.JBPopupListener;
+import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.StatusBarWidget;
@@ -37,6 +39,18 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     private final TimeTrackerService service;
 
     private boolean mouseInside = false;
+
+    private enum PopupState {
+        HIDDEN,
+        VISIBLE,
+        VISIBLE_WIDGET_PATTERN_FOCUS,
+        VISIBLE_GIT_PATTERN_FOCUS,
+
+        // Action only
+        VISIBLE_LOST_FOCUS
+    }
+
+    private PopupState popupState = PopupState.HIDDEN;
 
     TimeTrackerWidget(@NotNull TimeTrackerService service) {
         this.service = service;
@@ -77,12 +91,47 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         });
     }
 
+    private void setPopupState(@NotNull PopupState newState) {
+        final PopupState oldState = this.popupState;
+        if (newState == oldState) {
+            return;
+        }
+        switch (newState) {
+            case HIDDEN:
+            case VISIBLE:
+                this.popupState = newState;
+                break;
+            case VISIBLE_WIDGET_PATTERN_FOCUS:
+            case VISIBLE_GIT_PATTERN_FOCUS:
+                if (oldState != PopupState.HIDDEN) {
+                    this.popupState = newState;
+                }
+                break;
+            case VISIBLE_LOST_FOCUS:
+                if (oldState != PopupState.HIDDEN) {
+                    this.popupState = PopupState.VISIBLE;
+                }
+                break;
+        }
+
+        repaint();
+        revalidate();
+    }
+
     private static int resumeStopButtonWidth(int widgetWidth) {
         return widgetWidth - Math.max(widgetWidth / 5, SETTINGS_ICON.getIconWidth() / 2 * 3);
     }
 
     private void popupSettings() {
-        final TimeTrackerPopupContent content = new TimeTrackerPopupContent(service);
+        final TimeTrackerPopupContent content = new TimeTrackerPopupContent(service, (patternFieldType) -> {
+            if (patternFieldType == null) {
+                setPopupState(PopupState.VISIBLE_LOST_FOCUS);
+            } else if (patternFieldType == TimeTrackerPopupContent.PatternField.WIDGET) {
+                setPopupState(PopupState.VISIBLE_WIDGET_PATTERN_FOCUS);
+            } else if (patternFieldType == TimeTrackerPopupContent.PatternField.GIT) {
+                setPopupState(PopupState.VISIBLE_GIT_PATTERN_FOCUS);
+            }
+        });
 
         final ComponentPopupBuilder popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(content, null);
         popupBuilder.setCancelOnClickOutside(true);
@@ -98,9 +147,17 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
         final RelativePoint point = new RelativePoint(TimeTrackerWidget.this, new Point(visibleRect.x+visibleRect.width - preferredSize.width, visibleRect.y - (preferredSize.height + 15)));
         popup.show(point);
 
+        popup.addListener(new JBPopupListener() {
+            @Override
+            public void onClosed(@NotNull LightweightWindowEvent event) {
+                setPopupState(PopupState.HIDDEN);
+            }
+        });
+
         // Not sure if needed, but sometimes the popup is not clickable for some mysterious reason
         // and it stopped happening when this was added
         content.requestFocus();
+        setPopupState(PopupState.VISIBLE);
     }
 
     @NotNull
@@ -115,17 +172,25 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     @Override
     public void dispose() {}
 
-    private int lastTimeToShow = -1;
+    private TimePattern currentShowTimePattern() {
+        final PopupState popupState = this.popupState;
+        switch (popupState) {
+            case HIDDEN:
+            case VISIBLE_WIDGET_PATTERN_FOCUS:
+            default:
+                return service.getIdeTimePattern();
+            case VISIBLE:
+            case VISIBLE_LOST_FOCUS:
+                return FULL_TIME_FORMATTING;
+            case VISIBLE_GIT_PATTERN_FOCUS:
+                return service.getGitTimePattern();
+        }
+    }
 
     @Override
     public void paintComponent(final Graphics g) {
         final int timeToShow = service.getTotalTimeSeconds();
-        final String info = service.getIdeTimePattern().secondsToString(timeToShow);
-
-        if (timeToShow != lastTimeToShow) {
-            lastTimeToShow = timeToShow;
-            setToolTipText(FULL_TIME_FORMATTING.secondsToString(timeToShow));
-        }
+        final String info = currentShowTimePattern().secondsToString(timeToShow);
 
         final Dimension size = getSize();
         final Insets insets = getInsets();
@@ -194,7 +259,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     public Dimension getPreferredSize() {
         final Font widgetFont = WIDGET_FONT;
         final FontMetrics fontMetrics = getFontMetrics(widgetFont);
-        final TimePattern pattern = service.getIdeTimePattern();
+        final TimePattern pattern = currentShowTimePattern();
         final int stringWidth;
 
         if (widgetFont.equals(getPreferredSize_lastFont) && pattern.equals(getPreferredSize_lastPattern)) {
