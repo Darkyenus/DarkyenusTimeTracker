@@ -48,7 +48,7 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <statusBarWidgetFactory id="com.darkyen.DarkyenusTimeTracker" implementation="com.darkyen.TimeTrackerWidgetFactory" order="before memoryUsageWidget"/>
+        <statusBarWidgetFactory id="com.darkyen.DarkyenusTimeTracker" implementation="com.darkyen.TimeTrackerWidgetFactory" order="before memoryUsageWidget, after writeActionWidget"/>
         <projectService serviceImplementation="com.darkyen.TimeTrackerService"/>
         <applicationService serviceImplementation="com.darkyen.DefaultSettingsService"/>
         <applicationService serviceImplementation="com.darkyen.InactivityService"/>
