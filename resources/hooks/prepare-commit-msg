@@ -2,10 +2,10 @@
 
 # Darkyen's Time Tracker IntelliJ IDEA plugin time injection script
 # Copyright 2020 Jan Polák
-# You may modify this file, but the next version of the plugin may replace it.
+# You may modify this file, but the next version of the plugin may overwrite it.
 
 # Auto-update version identifier, do not change if modifying:
-#DarkyenusTimeTrackerHookScript00007
+#DarkyenusTimeTrackerHookScript00008
 
 # When this substring appears in the commit message (placed there by a template),
 # it will be replaced by the formatted duration.
@@ -27,9 +27,15 @@ if [ "$2" = "merge" ] || [ "$2" = "squash" ]; then
 	finish "Not injecting time into $2 commit"
 fi
 
+# Return whether or not is the message in file $1 empty or not (ignoring comments)
+is_message_file_empty() {
+	# (sed removes comments, grep fails on any non-space char)
+	! sed -e '/^#.*$/ d' < "$1" | grep -q -e "[^[:space:]]"
+}
+
 # Do not append time if the commit message is empty, because such commit will not happen
-# (sed removes comments, grep fails on any non-space char)
-if [ "$2" = "message" ] && sed -e '/^#.*$/ d' < "$1" | grep -q -v "[^[:space:]]"; then
+# This assumes the default behavior - if you don't use that behavior, feel free to remove this check
+if [ "$2" = "message" ] && is_message_file_empty "$1"; then
 	finish "Not injecting time into cancelled commit"
 fi
 

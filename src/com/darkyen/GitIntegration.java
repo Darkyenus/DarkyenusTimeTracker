@@ -110,7 +110,7 @@ final class GitIntegration {
 
 	private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";
 	private static final String TIME_TRACKER_HOOK_IDENTIFIER = "#DarkyenusTimeTrackerHookScript";
-	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00007";
+	private static final String TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED = TIME_TRACKER_HOOK_IDENTIFIER + "00008";
 
 	private static void fillWithHookContent (Path timeTrackerFile, Path hook) throws IOException {
 		try (BufferedWriter writer = Files.newBufferedWriter(hook, StandardCharsets.UTF_8)) {
