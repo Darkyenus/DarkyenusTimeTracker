@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.darkyen.darkyenustimetracker</id>
     <name>Darkyen's Time Tracker</name>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
     <vendor email="darkyenus@gmail.com" url="https://darkyen.com">Jan Polák</vendor>
     <category>Miscellaneous</category>
 
@@ -33,10 +33,8 @@
 
     <change-notes><![CDATA[
       <ul>
-        <li><b>If the widget does not appear, enable it manually by right clicking on the status bar and checking "Darkyen's Time Tracker"</b></li>
-        <li>Updated for IntelliJ Platform 2020.1 - the UI opening the settings menu has changed, because IDE now uses right-click for something different</li>
-        <li>Added dedicated reset-time actions. They don't have any shortcut by default, but <a href="https://www.jetbrains.com/help/idea/customize-actions-menus-and-toolbars.html">you can set that up yourself to fit your preference</a></li>
-        <li>Minor optimizations</li>
+        <li>The position of the widget in the status bar is now more consistent</li>
+        <li>Fixed a bug in git time injection, that would incorrectly detect commit messages as empty</li>
       </ul>
     ]]>
     </change-notes>
