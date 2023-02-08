@@ -14,6 +14,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Service listening for user activity to implement pause on inactivity.
@@ -21,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Optimized to be O(1) with respect to the amount of opened projects.
  */
 public final class InactivityService implements Disposable, AWTEventListener, PropertyChangeListener {
+
+	private static final Logger LOG = Logger.getLogger(InactivityService.class.getName());
 
 	@NotNull
 	public static InactivityService getInstance() {
@@ -47,6 +51,10 @@ public final class InactivityService implements Disposable, AWTEventListener, Pr
 
 	public void initListening(@NotNull Project project, @NotNull TimeTrackerService service) {
 		final Object frame = UIUtil.findUltimateParent(WindowManager.getInstance().getFrame(project));
+		if (frame == null) {
+			LOG.warn("Can't initialize listening - project has no window");//TODO
+			return;
+		}
 		final TimeTrackerService oldWindow = projectWindowToTimeTrackerService.put(frame, service);
 		Disposer.register(project, ()->{
 			projectWindowToTimeTrackerService.remove(frame);
