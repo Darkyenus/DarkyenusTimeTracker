@@ -33,14 +33,13 @@
 
     <change-notes><![CDATA[
       <ul>
-        <li>The position of the widget in the status bar is now more consistent</li>
-        <li>Fixed a bug in git time injection, that would incorrectly detect commit messages as empty</li>
+        <li>Fixed a rare crash on startup</li>
       </ul>
     ]]>
     </change-notes>
 
     <!-- http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html -->
-    <idea-version since-build="201.6251.9"/>
+    <idea-version since-build="203"/>
 
     <!-- http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
@@ -50,6 +49,9 @@
         <projectService serviceImplementation="com.darkyen.TimeTrackerService"/>
         <applicationService serviceImplementation="com.darkyen.DefaultSettingsService"/>
         <applicationService serviceImplementation="com.darkyen.InactivityService"/>
+
+        <notificationGroup id="Darkyenus Time Tracker" displayType="BALLOON" isLogByDefault="false"/>
+        <notificationGroup id="Darkyenus Time Tracker - Idle time" displayType="BALLOON" isLogByDefault="true"/>
     </extensions>
 
     <actions>

@@ -395,7 +395,7 @@ public final class TimePattern {
 	/**
 	 * Split the duration in seconds to bins according to selected units, so that can be used to represent
 	 * the time naturally.
-	 *
+	 * <p>
 	 * When the amount cannot be represented precisely (only when SECOND is not in selectedUnits),
 	 * the value of the smallest unit is rounded so that it is closer to the real value.
 	 *

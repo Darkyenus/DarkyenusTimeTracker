@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.popup.JBPopupListener;
 import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.wm.CustomStatusBarWidget;
 import com.intellij.openapi.wm.StatusBar;
-import com.intellij.openapi.wm.StatusBarWidget;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.util.ui.JBUI;
@@ -25,7 +24,7 @@ import static com.darkyen.TimeTrackingStatus.RUNNING;
 
 /**
  * The custom widget that is the main UI of the plugin.
- *
+ * <p>
  * NOTES:
  * - Not implementing getPresentation(), because it is not used for CustomStatusBarWidgets.
  * - AWTEventListener is for inactivity listening
@@ -72,7 +71,7 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
                 }
             }
         });
-        setBorder(StatusBarWidget.WidgetBorder.INSTANCE);
+        setBorder(JBUI.CurrentTheme.StatusBar.Widget.border());
         setOpaque(false);
         setFocusable(false);
 

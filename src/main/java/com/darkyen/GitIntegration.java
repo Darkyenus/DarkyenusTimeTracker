@@ -10,6 +10,8 @@ import org.jetbrains.annotations.NotNull;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -100,9 +102,14 @@ final class GitIntegration {
 	private static String prepareCommitMessageHookContent (Path timeTrackerFile, Path gitHooksDirectory) throws IOException {
 		String content = GitIntegration.prepareCommitMessageHookContent_cache;
 		if (content == null) {
-			content = GitIntegration.prepareCommitMessageHookContent_cache =
-					StreamUtil.readText(GitIntegration.class.getResourceAsStream(
-							"/hooks/"+ PREPARE_COMMIT_MESSAGE_HOOK_NAME), StandardCharsets.UTF_8);
+			final String hookPath = "/hooks/" + PREPARE_COMMIT_MESSAGE_HOOK_NAME;
+			final InputStream stream = GitIntegration.class.getResourceAsStream(hookPath);
+			if (stream == null) {
+				throw new AssertionError("Plugin distribution is broken, "+hookPath+" is missing");
+			}
+			try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+				content = GitIntegration.prepareCommitMessageHookContent_cache = StreamUtil.readText(reader);
+			}
 		}
 
 		return content.replace(DTT_TIME_RELATIVE_PATH_PLACEHOLDER, gitHooksDirectory.relativize(timeTrackerFile).toString());
@@ -149,7 +156,7 @@ final class GitIntegration {
 				return SetupCommitHookResult.SUCCESS;
 			} else {
 				// Is it our hook?
-				final String content = new String(Files.readAllBytes(hook), StandardCharsets.UTF_8);
+				final String content = Files.readString(hook);
 				final boolean isTimeTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER);
 				final boolean isRecentTrackerHook = content.contains(TIME_TRACKER_HOOK_IDENTIFIER_VERSIONED);
 				if (enable) {

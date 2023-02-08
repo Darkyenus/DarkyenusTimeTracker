@@ -2,8 +2,7 @@ package com.darkyen;
 
 import com.intellij.AppTopics;
 import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationDisplayType;
-import com.intellij.notification.NotificationGroup;
+import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.Disposable;
@@ -31,7 +30,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.util.concurrency.EdtExecutorService;
 import com.intellij.util.containers.ContainerUtil;
-import com.intellij.util.ui.EmptyIcon;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +52,7 @@ import static com.darkyen.Util.msToS;
 
 /**
  * Every entry-point method of this class is to be synchronized.
- *
+ * <p>
  * Each operation that needs to be on a particular thread must do it itself.
  */
 @State(name="DarkyenusTimeTracker", storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE)})
@@ -65,9 +63,9 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 
 	public static final long RESET_TIME_TO_ZERO = Long.MIN_VALUE;
 
-	private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker", NotificationDisplayType.BALLOON, false, null, EmptyIcon.ICON_0);
+	private static final String NOTIFICATION_GROUP_ID = "Darkyenus Time Tracker";
 
-	private static final NotificationGroup IDLE_NOTIFICATION_GROUP = new NotificationGroup("Darkyenus Time Tracker - Idle time", NotificationDisplayType.BALLOON, true, null, EmptyIcon.ICON_0);
+	private static final String IDLE_NOTIFICATION_GROUP_ID = "Darkyenus Time Tracker - Idle time";
 	public static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
 	@NotNull
@@ -288,7 +286,8 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 				} else if (msInState > 1000) {
 					final Project project = project();
 					if (project != null) {
-						final Notification notification = IDLE_NOTIFICATION_GROUP.createNotification(
+						final Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(IDLE_NOTIFICATION_GROUP_ID)
+								.createNotification(
 								"Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
 								NotificationType.INFORMATION);
 
@@ -392,10 +391,10 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 			projectBase = convertToIOFile(getProjectBaseDir(project));
 			if (projectBase == null) {
 				if (enable) {
-					Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+					Notifications.Bus.notify(NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP_ID).createNotification(
 							"Failed to enable git integration",
 							"Project is not on a local filesystem",
-							NotificationType.WARNING, null), project);
+							NotificationType.WARNING), project);
 				}
 				return false;
 			}
@@ -421,18 +420,18 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 			}
 			case INTERNAL_ERROR:
 			case HOOK_ALREADY_EXISTS: {
-				Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+				Notifications.Bus.notify(NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP_ID).createNotification(
 						"Failed to " + (enable ? "enable" : "disable") + " git integration",
 						result.message,
-						NotificationType.WARNING, null), project());
+						NotificationType.WARNING), project());
 				return this.gitIntegration = false;
 			}
 			case GIT_DIR_NOT_FOUND:
 			case GIT_HOOKS_DIR_NOT_FOUND: {
-				final Notification notification = NOTIFICATION_GROUP.createNotification(
+				final Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP_ID).createNotification(
 						"Failed to enable git integration",
 						result == GIT_DIR_NOT_FOUND ? "'.git' directory not found" : "'.git/hooks' directory not found",
-						NotificationType.WARNING, null);
+						NotificationType.WARNING);
 				notification.addAction(new AnAction("Find manually") {
 					@Override
 					public void actionPerformed(@NotNull AnActionEvent e) {
@@ -538,24 +537,43 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 		nagAboutGitIntegrationIfNeeded();
 	}
 
+	private transient boolean naggedAboutGitIntegrationThisRun = false;
+
 	private void nagAboutGitIntegrationIfNeeded() {
-		if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && !gitIntegration) {
+		if ((naggedAbout & TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION) == 0 && !gitIntegration && !naggedAboutGitIntegrationThisRun) {
+			naggedAboutGitIntegrationThisRun = true;
 			ApplicationManager.getApplication().invokeLater(() -> {
 				final VirtualFile projectBaseDir = getProjectBaseDir(project());
 				if (!gitIntegration && projectBaseDir != null && projectBaseDir.findChild(".git") != null) {
-					Notifications.Bus.notify(NOTIFICATION_GROUP.createNotification(
+					final Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP_ID).createNotification(
 							"Git repository detected",
-							"Enable time tracker git integration?<br><a href=\"yes\">Yes</a> <a href=\"no\">No</a><br>You can change your mind later. Git integration will append time spent on commit into commit messages.",
-							NotificationType.INFORMATION,
-							(n, event) -> {
-								if ("yes".equals(event.getDescription())) {
-									setGitIntegration(true);
-								} else if (!"no".equals(event.getDescription())) {
-									return;
-								}
-								n.expire();
-								setNaggedAbout(getNaggedAbout() | TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION);
-							}), project());
+							"Enable time tracker git integration?<br>You can change your mind later. Git integration will append time spent on commit into commit messages.",
+							NotificationType.INFORMATION);
+
+					notification.addAction(new AnAction("Yes") {
+						@Override
+						public void actionPerformed(@NotNull AnActionEvent e) {
+							if (notification.isExpired()) {
+								return;
+							}
+							notification.expire();
+
+							setNaggedAbout(getNaggedAbout() | TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION);
+							setGitIntegration(true);
+						}
+					});
+					notification.addAction(new AnAction("No") {
+						@Override
+						public void actionPerformed(@NotNull AnActionEvent e) {
+							if (notification.isExpired()) {
+								return;
+							}
+							notification.expire();
+
+							setNaggedAbout(getNaggedAbout() | TimeTrackerPersistentState.NAGGED_ABOUT_GIT_INTEGRATION);
+						}
+					});
+					notification.notify(project());
 				}
 			}, ModalityState.NON_MODAL);
 		}

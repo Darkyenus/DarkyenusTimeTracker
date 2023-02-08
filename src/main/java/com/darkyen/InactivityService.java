@@ -2,7 +2,6 @@ package com.darkyen;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.util.ui.UIUtil;
@@ -19,7 +18,7 @@ import java.util.logging.Logger;
 
 /**
  * Service listening for user activity to implement pause on inactivity.
- *
+ * <p>
  * Optimized to be O(1) with respect to the amount of opened projects.
  */
 public final class InactivityService implements Disposable, AWTEventListener, PropertyChangeListener {

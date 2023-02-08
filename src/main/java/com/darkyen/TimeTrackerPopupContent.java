@@ -25,6 +25,8 @@ import java.awt.event.FocusListener;
 import java.beans.PropertyChangeEvent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.function.Consumer;
@@ -215,7 +217,9 @@ final class TimeTrackerPopupContent extends Box {
 				if (stream == null) {
 					text = "Failed to load: resource is missing";
 				} else {
-					text = StreamUtil.readText(stream, StandardCharsets.UTF_8);
+					try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+						text = StreamUtil.readText(reader);
+					}
 				}
 			} catch (IOException e) {
 				LOG.log(Level.SEVERE, "Failed to load time pattern text", e);

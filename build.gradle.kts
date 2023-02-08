@@ -1,11 +1,3 @@
-import org.jetbrains.kotlin.js.common.isValidES5Identifier
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import org.jsoup.parser.Parser
-import java.io.FileFilter
-import java.util.regex.Pattern
-import java.time.Instant
-
 plugins {
     // Java support
     id("java")
@@ -37,7 +29,7 @@ intellij {
 tasks {
     // Set the JVM compatibility versions
     // Java language level used to compile sources and to generate the files for - Java 11 is required since 2020.3
-    val javaVersion = "17"
+    val javaVersion = "11"
     withType<JavaCompile> {
         sourceCompatibility = javaVersion
         targetCompatibility = javaVersion

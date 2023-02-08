@@ -36,9 +36,9 @@ public final class TimeTrackerPersistentState {
         this.gitTimePattern = state.gitTimePattern;
     }
 
-    public static transient long NAGGED_ABOUT_GIT_INTEGRATION = 1;
-    public static transient String DEFAULT_IDE_TIME_PATTERN = "{{lh \"hr\"s}} {{lm \"min\"}} {{ts \"sec\"}}";
-    public static transient String DEFAULT_GIT_TIME_PATTERN = "Took {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}";
-    public static transient String DEFAULT_GIT_REPO_PATH = ".git";
-    public static transient String DEFAULT_GIT_HOOKS_PATH = ".git/hooks";
+    public static long NAGGED_ABOUT_GIT_INTEGRATION = 1;
+    public static String DEFAULT_IDE_TIME_PATTERN = "{{lh \"hr\"s}} {{lm \"min\"}} {{ts \"sec\"}}";
+    public static String DEFAULT_GIT_TIME_PATTERN = "Took {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}";
+    public static String DEFAULT_GIT_REPO_PATH = ".git";
+    public static String DEFAULT_GIT_HOOKS_PATH = ".git/hooks";
 }
