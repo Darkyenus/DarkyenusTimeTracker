@@ -4,10 +4,10 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "1.7.20"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.9.0"
+    id("org.jetbrains.intellij") version "1.12.0"
 }
 
-val pluginVersion = "1.5.1"
+val pluginVersion = "1.5.2"
 
 group = "com.darkyen"
 version = pluginVersion
