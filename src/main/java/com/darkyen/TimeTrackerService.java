@@ -6,11 +6,11 @@ import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.components.PersistentStateComponent;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.components.StoragePathMacros;
@@ -24,6 +24,7 @@ import com.intellij.openapi.fileChooser.FileChooserDialog;
 import com.intellij.openapi.fileChooser.FileChooserFactory;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -55,6 +56,7 @@ import static com.darkyen.Util.msToS;
  * <p>
  * Each operation that needs to be on a particular thread must do it itself.
  */
+@Service({ Service.Level.PROJECT })
 @State(name="DarkyenusTimeTracker", storages = {@Storage(value = StoragePathMacros.WORKSPACE_FILE)})
 public final class TimeTrackerService implements PersistentStateComponent<TimeTrackerPersistentState>, Disposable {
 
@@ -291,7 +293,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 								"Gone for <b>" + NOTIFICATION_TIME_FORMATTING.millisecondsToString(msInState) + "</b>",
 								NotificationType.INFORMATION);
 
-						notification.addAction(new AnAction("Count this time in") {
+						notification.addAction(new DumbAwareAction("Count this time in") {
 
 							private boolean primed = true;
 
@@ -432,7 +434,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 						"Failed to enable git integration",
 						result == GIT_DIR_NOT_FOUND ? "'.git' directory not found" : "'.git/hooks' directory not found",
 						NotificationType.WARNING);
-				notification.addAction(new AnAction("Find manually") {
+				notification.addAction(new DumbAwareAction("Find manually") {
 					@Override
 					public void actionPerformed(@NotNull AnActionEvent e) {
 						if (notification.isExpired()) {
@@ -550,7 +552,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 							"Enable time tracker git integration?<br>You can change your mind later. Git integration will append time spent on commit into commit messages.",
 							NotificationType.INFORMATION);
 
-					notification.addAction(new AnAction("Yes") {
+					notification.addAction(new DumbAwareAction("Yes") {
 						@Override
 						public void actionPerformed(@NotNull AnActionEvent e) {
 							if (notification.isExpired()) {
@@ -562,7 +564,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 							setGitIntegration(true);
 						}
 					});
-					notification.addAction(new AnAction("No") {
+					notification.addAction(new DumbAwareAction("No") {
 						@Override
 						public void actionPerformed(@NotNull AnActionEvent e) {
 							if (notification.isExpired()) {

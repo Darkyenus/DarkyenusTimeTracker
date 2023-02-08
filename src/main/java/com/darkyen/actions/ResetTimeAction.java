@@ -1,13 +1,13 @@
 package com.darkyen.actions;
 
 import com.darkyen.TimeTrackerService;
-import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 /** Reset all time counters. */
-public class ResetTimeAction extends AnAction {
+public class ResetTimeAction extends DumbAwareAction {
 
 	@Override
 	public void actionPerformed(@NotNull AnActionEvent e) {

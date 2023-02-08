@@ -1,15 +1,15 @@
 package com.darkyen.actions;
 
 import com.darkyen.TimeTrackerService;
-import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * Reset Git time counter.
  */
-public class ResetGitTimeAction extends AnAction {
+public class ResetGitTimeAction extends DumbAwareAction {
 
 	@Override
 	public void actionPerformed(@NotNull AnActionEvent e) {
