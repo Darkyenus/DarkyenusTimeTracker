@@ -71,7 +71,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 	public static final TimePattern NOTIFICATION_TIME_FORMATTING = TimePattern.parse("{{lw \"week\"s}} {{ld \"day\"s}} {{lh \"hour\"s}} {{lm \"minute\"s}} {{ts \"second\"s}}");
 
 	@NotNull
-	private final Project _project;
+	public final Project project;
 
 	@Nullable
 	private GitIntegration gitIntegrationComponent;
@@ -116,7 +116,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 
 	public TimeTrackerService(@NotNull Project project) {
 		if (DEBUG_LIFECYCLE) LOG.log(Level.INFO, "Instantiated "+this);
-		this._project = project;
+		this.project = project;
 		Disposer.register(project, this);
 
 		ALL_OPENED_TRACKERS.add(this);
@@ -171,7 +171,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 			}
 		}, this);
 
-		InactivityService.getInstance().initListening(project, this);
+		InactivityService.getInstance().assignProjectWindow(this, null);
 	}
 
 	@NotNull
@@ -594,7 +594,7 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 
 	@Nullable
 	private Project project() {
-		final Project project = _project;
+		final Project project = this.project;
 		if (project.isDisposed()) {
 			return null;
 		}
@@ -695,6 +695,6 @@ public final class TimeTrackerService implements PersistentStateComponent<TimeTr
 
 	@Override
 	public String toString() {
-		return "TTC("+_project+")@"+System.identityHashCode(this);
+		return "TTC("+ project +")@"+System.identityHashCode(this);
 	}
 }

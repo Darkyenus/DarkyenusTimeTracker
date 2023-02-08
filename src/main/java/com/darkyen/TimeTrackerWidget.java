@@ -167,7 +167,9 @@ public final class TimeTrackerWidget extends JButton implements CustomStatusBarW
     }
 
     @Override
-    public void install(@NotNull StatusBar statusBar) {}
+    public void install(@NotNull StatusBar statusBar) {
+        InactivityService.getInstance().assignProjectWindow(service, statusBar.getComponent());
+    }
 
     @Override
     public void dispose() {}

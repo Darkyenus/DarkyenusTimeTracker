@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.event.AWTEventListener;
@@ -48,18 +49,23 @@ public final class InactivityService implements Disposable, AWTEventListener, Pr
 		currentFocusedWindow = keyboardFocusManager.getActiveWindow();
 	}
 
-	public void initListening(@NotNull Project project, @NotNull TimeTrackerService service) {
-		final Object frame = UIUtil.findUltimateParent(WindowManager.getInstance().getFrame(project));
-		if (frame == null) {
-			LOG.warning("Can't initialize listening - project has no window");//TODO
-			return;
+	public void assignProjectWindow(@NotNull TimeTrackerService service, @Nullable Component componentInFrame) {
+		if (componentInFrame == null) {
+			componentInFrame = WindowManager.getInstance().getFrame(service.project);
+			if (componentInFrame == null) {
+				LOG.warning("Can't initialize listening - project has no window");
+				return;
+			}
 		}
-		final TimeTrackerService oldWindow = projectWindowToTimeTrackerService.put(frame, service);
-		Disposer.register(project, ()->{
-			projectWindowToTimeTrackerService.remove(frame);
-		});
 
-		assert oldWindow == null;
+		final Object frameRoot = UIUtil.findUltimateParent(componentInFrame);
+
+		projectWindowToTimeTrackerService.put(frameRoot, service);
+		Disposer.register(service.project, ()-> {
+			if (projectWindowToTimeTrackerService.get(frameRoot) == service) {
+				projectWindowToTimeTrackerService.remove(frameRoot);
+			}
+		});
 	}
 
 	@Override
