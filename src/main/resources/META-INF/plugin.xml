@@ -32,7 +32,7 @@
 
     <change-notes><![CDATA[
       <ul>
-        <li>Fixed a rare crash on startup</li>
+        <li>Fixed a rare issue present only when using git integration on Windows with git running in Linux (e.g. WSL)</li>
       </ul>
     ]]>
     </change-notes>
