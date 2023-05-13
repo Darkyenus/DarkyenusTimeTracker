@@ -112,7 +112,7 @@ final class GitIntegration {
 			}
 		}
 
-		return content.replace(DTT_TIME_RELATIVE_PATH_PLACEHOLDER, gitHooksDirectory.relativize(timeTrackerFile).toString());
+		return content.replace(DTT_TIME_RELATIVE_PATH_PLACEHOLDER, gitHooksDirectory.relativize(timeTrackerFile).toString().replace('\\', '/'));
 	}
 
 	private static final String PREPARE_COMMIT_MESSAGE_HOOK_NAME = "prepare-commit-msg";

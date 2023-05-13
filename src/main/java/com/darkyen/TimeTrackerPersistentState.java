@@ -16,7 +16,7 @@ public final class TimeTrackerPersistentState {
 
     public boolean gitIntegration = false;
 
-    /** Bit field recording which features did we suggest user to enable. */
+    /** Bit field recording which features did we suggest user to enable. */
     public long naggedAbout = 0;
 
     public String ideTimePattern = DEFAULT_IDE_TIME_PATTERN;
